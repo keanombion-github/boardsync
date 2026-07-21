@@ -1,0 +1,6 @@
+@Boardsync.Api_HostAddress = http://localhost:5230
+
+GET {{Boardsync.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

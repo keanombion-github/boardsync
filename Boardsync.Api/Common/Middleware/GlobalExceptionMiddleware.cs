@@ -31,6 +31,17 @@ public class GlobalExceptionMiddleware
         {
             await _next(context);
         }
+        catch (BadHttpRequestException ex)
+        {
+            context.Response.StatusCode = ex.StatusCode;
+
+            var response = ApiResponse<object>.Fail(
+                "INVALID_REQUEST",
+                "The request body is missing or invalid."
+            );
+
+            await context.Response.WriteAsJsonAsync(response);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception occurred");

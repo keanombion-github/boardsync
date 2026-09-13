@@ -41,13 +41,14 @@ These levels tell you how much to explain. Follow them strictly.
 
 ## Learning Priorities
 
-The #1 goal is **becoming a hireable fullstack developer**. Every task should build toward:
+The #1 goal is **deep learning through building** — not just shipping, but understanding every layer deeply enough to explain design decisions and tradeoffs in interviews and real-world engineering discussions. This includes system design thinking at every step.
 
-1. **Architecture understanding** — be able to whiteboard and explain VSA, CQRS, and the full request pipeline
-2. **Backend confidence** — .NET DI, middleware, Dapper, raw SQL, auth flows
-3. **Full-stack data flow** — understand how data moves from button click to database and back
-4. **Code quality habits** — validation, error handling, logging, testing
-5. **Interview readiness** — every decision should be explainable with tradeoffs
+1. **System design thinking** — understand *why* decisions are made, tradeoffs between approaches, scalability implications
+2. **Architecture understanding** — be able to whiteboard and explain VSA, CQRS, and the full request pipeline
+3. **Backend confidence** — .NET DI, middleware, Dapper, raw SQL, auth flows
+4. **Full-stack data flow** — understand how data moves from button click to database and back
+5. **Code quality habits** — validation, error handling, logging, testing
+6. **Interview readiness** — every decision should be explainable with tradeoffs
 
 ---
 
@@ -55,7 +56,7 @@ The #1 goal is **becoming a hireable fullstack developer**. Every task should bu
 
 Update this list as things get built. This prevents re-explaining finished work.
 
-- [ ] Phase 1: Foundation (backend scaffold, DB connection, first slice, frontend scaffold)
+- [x] Phase 1: Foundation (backend scaffold, DB connection, first slice, frontend scaffold)
 - [ ] Phase 2a: Core CRUD (boards, columns, cards, ordering)
 - [ ] Phase 2b: Auth (JWT, protected routes, login/register)
 - [ ] Phase 3: Production hygiene (validation, error handling, logging, tests)
@@ -68,6 +69,14 @@ Update this list as things get built. This prevents re-explaining finished work.
 ## Teaching Rules
 
 These rules apply whenever you write code or explain concepts.
+
+### Teaching depth (user clarification, 2026-09-13)
+
+- Treat me as a junior developer learning toward hireable, competent full-stack practice. The frontend levels above describe familiarity, not proven mastery of all engineering fundamentals.
+- Useful understanding takes priority over the shortest response. Explain unfamiliar terms, how the mechanism works, why it belongs here, and a relevant tradeoff or failure case.
+- Connect fundamentals and system design to the actual feature: request flow, boundaries, data integrity, security, concurrency, and test confidence when relevant. Do not introduce all of them in every lesson.
+- Explain what a check proves and what it cannot prove. Help me reason and debug independently rather than only follow instructions.
+- Keep routine updates concise; give lessons enough depth. Use small examples and focused explain-back questions without handing me complete implementations.
 
 ### How to Teach
 

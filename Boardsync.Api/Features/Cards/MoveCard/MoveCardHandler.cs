@@ -12,9 +12,29 @@ public class MoveCardHandler
         _dbConnectionFactory = dbConnectionFactory;
     }
 
-    public async Task<bool> HandleAsync(MoveCardCommand command)
+    public async Task<MoveCardResult> HandleAsync(MoveCardCommand command)
     {
         using var connection = _dbConnectionFactory.CreateConnection();
+
+        const string existingCard = @"
+            SELECT EXISTS (
+                SELECT 1
+                FROM cards
+                WHERE column_id = @ColumnId
+                AND id <> @Id
+            );
+        ";
+
+        if (!command.BeforePosition.HasValue && !command.AfterPosition.HasValue)
+        {
+            var hasOtherCards = await connection.ExecuteScalarAsync<bool>(
+                existingCard,
+                new { command.ColumnId, command.Id }
+            );
+
+            if (hasOtherCards)
+                return MoveCardResult.NeighborsRequired;
+        }
 
         // 1. Calculate new position
         var newPosition = CalculatePosition(command.BeforePosition, command.AfterPosition);
@@ -26,12 +46,18 @@ public class MoveCardHandler
         ";
         var rowsAffected = await connection.ExecuteAsync(sql, 
             new { command.ColumnId, Position = newPosition, command.Id });
-        return rowsAffected > 0;
+       
+       if (rowsAffected == 0)
+          return MoveCardResult.CardNotFound;
+
+        return MoveCardResult.Moved;
 
     }
 
     private static double CalculatePosition(double? before, double? after)
     {
+        if (!before.HasValue && !after.HasValue)
+            return 1.0;
         if (before.HasValue && after.HasValue)
             return (before.Value + after.Value) / 2;   // midpoint between neighbors
         if (before.HasValue)

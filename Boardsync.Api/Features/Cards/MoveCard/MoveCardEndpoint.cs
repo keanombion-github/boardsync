@@ -28,11 +28,21 @@ public static class MoveCardEndpoint {
                 return Results.BadRequest(response);
             }
 
-            var success = await handler.HandleAsync(command);
-            if (!success)
-            {
-                return Results.NotFound(ApiResponse<object>.Fail("NOT_FOUND", "Card not found."));
-            }
+            var result = await handler.HandleAsync(command);
+            
+            if (result == MoveCardResult.CardNotFound)
+                return Results.NotFound(
+                    ApiResponse<object>.Fail("NOT_FOUND", "Card not found.")
+                );
+
+            if (result == MoveCardResult.NeighborsRequired)
+                return Results.BadRequest(
+                    ApiResponse<object>.Fail(
+                        "NEIGHBORS_REQUIRED",
+                        "Provide neighbor positions when the destination contains other cards."
+                    )
+                );
+
             return Results.Ok(ApiResponse<object>.Ok(new { id }));
         })
         .WithName("MoveCard")

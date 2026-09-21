@@ -2,6 +2,13 @@ namespace Boardsync.Api.Features.Cards.MoveCard;
 
 public record MoveCardBody(double? BeforePosition, double? AfterPosition, Guid ColumnId);
 
+public enum MoveCardResult
+{
+    Moved,
+    CardNotFound,
+    NeighborsRequired
+}
+
 public class MoveCardCommand
 {
     public required Guid Id { get; set; } // card being move

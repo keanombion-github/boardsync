@@ -6,8 +6,7 @@ public class MoveCardValidator : AbstractValidator<MoveCardCommand>
 {
     public MoveCardValidator()
     {
-        RuleFor(x => x)
-            .Must(x => x.BeforePosition.HasValue || x.AfterPosition.HasValue)
-            .WithMessage("At least one of BeforePosition or AfterPosition must be provided.");
+        RuleFor(x => x.Id).NotEmpty();
+        RuleFor(x => x.ColumnId).NotEmpty();
     }
 }

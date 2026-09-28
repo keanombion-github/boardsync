@@ -3,7 +3,8 @@ using FluentValidation;
 
 namespace Boardsync.Api.Features.Cards.MoveCard;
 
-public static class MoveCardEndpoint {
+public static class MoveCardEndpoint
+{
     public static void MapMoveCardEndpoint(this IEndpointRouteBuilder app)
     {
         app.MapPut("/api/cards/{id}/move", async (
@@ -11,14 +12,14 @@ public static class MoveCardEndpoint {
             MoveCardBody body,
             IValidator<MoveCardCommand> validator,
             MoveCardHandler handler
-        ) => {
-            
+        ) =>
+        {
             var command = new MoveCardCommand
             {
-                Id = id, 
-                ColumnId = body.ColumnId, 
-                BeforePosition = body.BeforePosition, 
-                AfterPosition = body.AfterPosition
+                Id = id,
+                ColumnId = body.ColumnId,
+                BeforeCardId = body.BeforeCardId,
+                AfterCardId = body.AfterCardId
             };
 
             var validationResult = await validator.ValidateAsync(command);
@@ -35,11 +36,24 @@ public static class MoveCardEndpoint {
                     ApiResponse<object>.Fail("NOT_FOUND", "Card not found.")
                 );
 
-            if (result == MoveCardResult.NeighborsRequired)
+            if (result == MoveCardResult.DestinationColumnNotFound)
+                return Results.NotFound(
+                    ApiResponse<object>.Fail("NOT_FOUND", "Destination column not found.")
+                );
+
+            if (result == MoveCardResult.CrossBoardMove)
                 return Results.BadRequest(
                     ApiResponse<object>.Fail(
-                        "NEIGHBORS_REQUIRED",
-                        "Provide neighbor positions when the destination contains other cards."
+                        "INVALID_DESTINATION",
+                        "Cards cannot be moved between unrelated boards."
+                    )
+                );
+
+            if (result == MoveCardResult.InvalidNeighbors)
+                return Results.BadRequest(
+                    ApiResponse<object>.Fail(
+                        "INVALID_NEIGHBORS",
+                        "Card neighbors must be adjacent cards in the destination column."
                     )
                 );
 

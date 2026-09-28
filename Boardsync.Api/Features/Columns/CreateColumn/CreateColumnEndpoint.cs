@@ -29,7 +29,13 @@ public static class CreateColumnEndpoint
 
             var columnId = await handler.HandleAsync(command);
 
-            return Results.Created($"/api/boards/{command.BoardId}/columns/{columnId}", ApiResponse<object>.Ok(new { Id = columnId }));
+            if (!columnId.HasValue)
+                return Results.NotFound(
+                    ApiResponse<object>.Fail("NOT_FOUND", "Board not found."));
+
+            return Results.Created(
+                $"/api/boards/{command.BoardId}/columns/{columnId}",
+                ApiResponse<object>.Ok(new { Id = columnId.Value }));
         })
         .WithName("CreateColumn")
         .WithTags("Columns");

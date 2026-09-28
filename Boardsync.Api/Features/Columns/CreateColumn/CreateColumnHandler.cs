@@ -12,30 +12,55 @@ public class CreateColumnHandler
         _dbConnectionFactory = dbConnectionFactory;
     }
 
-    public async Task<Guid> HandleAsync(CreateColumnCommand command)
+    public async Task<Guid?> HandleAsync(CreateColumnCommand command)
     {
         using var connection = _dbConnectionFactory.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
 
-        const string positionQuery = @"
-            SELECT COALESCE(MAX(position), 0) 
+        const string boardLockSql = """
+            SELECT id
+            FROM boards
+            WHERE id = @BoardId
+            FOR UPDATE;
+            """;
+
+        var boardId = await connection.QuerySingleOrDefaultAsync<Guid?>(
+            boardLockSql,
+            new { command.BoardId },
+            transaction);
+
+        if (!boardId.HasValue)
+            return null;
+
+        const string positionSql = """
+            SELECT COALESCE(MAX(position), 0)
             FROM columns
-            WHERE board_id = @BoardId
-        ";
+            WHERE board_id = @BoardId;
+            """;
 
-        var maxPosition = await connection.ExecuteScalarAsync<double>(positionQuery, new { command.BoardId });
-        
-        var newPosition = maxPosition + 1.0;
+        var maxPosition = await connection.ExecuteScalarAsync<double>(
+            positionSql,
+            new { command.BoardId },
+            transaction);
 
-        // Parameterized query prevents SQL injection
-        const string sql = @"
+        const string insertSql = """
             INSERT INTO columns (name, board_id, position)
             VALUES (@Name, @BoardId, @Position)
             RETURNING id;
-            ";
+            """;
 
-        // Dapper automatically maps the command properties to the @Name and @BoardId parameters
-        var columnId = await connection.ExecuteScalarAsync<Guid>(sql, new { command.Name, command.BoardId, Position = newPosition });
-        
+        var columnId = await connection.ExecuteScalarAsync<Guid>(
+            insertSql,
+            new
+            {
+                command.Name,
+                command.BoardId,
+                Position = maxPosition + 1.0
+            },
+            transaction);
+
+        transaction.Commit();
         return columnId;
     }
 }

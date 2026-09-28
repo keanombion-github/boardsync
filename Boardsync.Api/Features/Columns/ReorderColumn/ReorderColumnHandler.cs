@@ -1,4 +1,5 @@
 using Boardsync.Api.Common.Database;
+using Boardsync.Api.Common.Ordering;
 using Dapper;
 
 namespace Boardsync.Api.Features.Columns.ReorderColumn;
@@ -12,32 +13,72 @@ public class ReorderColumnHandler
         _dbConnectionFactory = dbConnectionFactory;
     }
 
-    public async Task<bool> HandleAsync(ReorderColumnCommand command)
+    public async Task<ReorderColumnResult> HandleAsync(
+        ReorderColumnCommand command)
     {
         using var connection = _dbConnectionFactory.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
 
-        // db query logic
+        const string boardSql = """
+            SELECT id
+            FROM boards
+            WHERE id = @BoardId
+            FOR UPDATE;
+            """;
 
-        // 1. Calculate new position
-        var newPosition = CalculatePosition(command.BeforePosition, command.AfterPosition);
-        // 2. Update both column_id and position in one SQL statement
-        const string sql = @"
+        var boardId = await connection.QuerySingleOrDefaultAsync<Guid?>(
+            boardSql,
+            new { command.BoardId },
+            transaction);
+
+        if (!boardId.HasValue)
+            return ReorderColumnResult.BoardNotFound;
+
+        const string columnsSql = """
+            SELECT id, position
+            FROM columns
+            WHERE board_id = @BoardId AND id <> @ColumnId
+            ORDER BY position, id
+            FOR UPDATE;
+            """;
+
+        var columns = (
+            await connection.QueryAsync<PositionedItem>(
+                columnsSql,
+                new { command.BoardId, command.ColumnId },
+                transaction)
+        ).AsList();
+
+        if (!FractionalPosition.TryCalculate(
+                columns,
+                command.BeforeColumnId,
+                command.AfterColumnId,
+                out var newPosition))
+        {
+            return ReorderColumnResult.InvalidNeighbors;
+        }
+
+        const string updateSql = """
             UPDATE columns
             SET position = @Position
-            WHERE id = @ColumnId AND board_id = @BoardId
-        ";
-        var rowsAffected = await connection.ExecuteAsync(sql, 
-            new { command.ColumnId, Position = newPosition, command.BoardId });
-        return rowsAffected > 0;
-    }
+            WHERE id = @ColumnId AND board_id = @BoardId;
+            """;
 
-    private static double CalculatePosition(double? before, double? after)
-    {
-        if (before.HasValue && after.HasValue)
-            return (before.Value + after.Value) / 2;   // midpoint between neighbors
-        if (before.HasValue)
-            return before.Value + 1.0;                  // dropping at the bottom
-        return after!.Value / 2;                        // dropping at the top
-    }
+        var rowsAffected = await connection.ExecuteAsync(
+            updateSql,
+            new
+            {
+                command.ColumnId,
+                command.BoardId,
+                Position = newPosition
+            },
+            transaction);
 
+        if (rowsAffected == 0)
+            return ReorderColumnResult.ColumnNotFound;
+
+        transaction.Commit();
+        return ReorderColumnResult.Reordered;
+    }
 }

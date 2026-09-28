@@ -3,16 +3,18 @@ using FluentValidation;
 
 namespace Boardsync.Api.Features.Cards.CreateCard;
 
-public static class CreateCardEndpoint {
+public static class CreateCardEndpoint
+{
     public static void MapCreateCardEndpoint(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/cards", async (
             CreateCardBody body,
             IValidator<CreateCardCommand> validator,
             CreateCardHandler handler
-        ) => {
-            
-            var command = new CreateCardCommand {
+        ) =>
+        {
+            var command = new CreateCardCommand
+            {
                 Title = body.Title,
                 Description = body.Description,
                 ColumnId = body.ColumnId
@@ -27,7 +29,13 @@ public static class CreateCardEndpoint {
 
             var cardId = await handler.HandleAsync(command);
 
-            return Results.Created($"/api/cards/{cardId}", ApiResponse<object>.Ok(new { id = cardId}));
+            if (!cardId.HasValue)
+                return Results.NotFound(
+                    ApiResponse<object>.Fail("NOT_FOUND", "Column not found."));
+
+            return Results.Created(
+                $"/api/cards/{cardId}",
+                ApiResponse<object>.Ok(new { id = cardId.Value }));
         })
         .WithName("CreateCard")
         .WithTags("Cards");

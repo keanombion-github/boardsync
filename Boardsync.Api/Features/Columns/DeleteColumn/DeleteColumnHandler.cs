@@ -12,13 +12,19 @@ public class DeleteColumnHandler
         _dbConnectionFactory = dbConnectionFactory;
     }
 
-    public async Task HandleAsync(DeleteColumnCommand command)
+    public async Task<bool> HandleAsync(DeleteColumnCommand command)
     {
         using var connection = _dbConnectionFactory.CreateConnection();
-        await connection.ExecuteAsync(
-            "DELETE FROM columns WHERE id = @ColumnId",
-            new { 
-                command.ColumnId 
-            });
+
+        const string sql = """
+            DELETE FROM columns
+            WHERE id = @ColumnId AND board_id = @BoardId;
+            """;
+
+        var rowsAffected = await connection.ExecuteAsync(
+            sql,
+            new { command.ColumnId, command.BoardId });
+
+        return rowsAffected > 0;
     }
 }

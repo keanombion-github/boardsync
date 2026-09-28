@@ -16,6 +16,7 @@ public static class DeleteColumnEndpoint
         {
             var command = new DeleteColumnCommand
             {
+                BoardId = boardId,
                 ColumnId = columnId
             };
             var validationResult = await validator.ValidateAsync(command);
@@ -26,7 +27,13 @@ public static class DeleteColumnEndpoint
                 return Results.BadRequest(response);
             }
 
-            await handler.HandleAsync(command);
+            var deleted = await handler.HandleAsync(command);
+
+            if (!deleted)
+            {
+                return Results.NotFound(
+                    ApiResponse<object>.Fail("NOT_FOUND", "Column not found on this board."));
+            }
 
             return Results.NoContent();
         })

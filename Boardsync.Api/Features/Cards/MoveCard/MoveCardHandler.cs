@@ -1,4 +1,5 @@
 using Boardsync.Api.Common.Database;
+using Boardsync.Api.Common.Ordering;
 using Dapper;
 
 namespace Boardsync.Api.Features.Cards.MoveCard;
@@ -15,54 +16,100 @@ public class MoveCardHandler
     public async Task<MoveCardResult> HandleAsync(MoveCardCommand command)
     {
         using var connection = _dbConnectionFactory.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
 
-        const string existingCard = @"
-            SELECT EXISTS (
-                SELECT 1
-                FROM cards
-                WHERE column_id = @ColumnId
-                AND id <> @Id
-            );
-        ";
+        const string cardScopeSql = """
+            SELECT col.board_id AS BoardId
+            FROM cards AS c
+            JOIN columns AS col ON col.id = c.column_id
+            WHERE c.id = @Id;
+            """;
 
-        if (!command.BeforePosition.HasValue && !command.AfterPosition.HasValue)
+        var sourceBoardId = await connection.QuerySingleOrDefaultAsync<Guid?>(
+            cardScopeSql,
+            new { command.Id },
+            transaction);
+
+        if (!sourceBoardId.HasValue)
+            return MoveCardResult.CardNotFound;
+
+        const string boardLockSql = """
+            SELECT id
+            FROM boards
+            WHERE id = @BoardId
+            FOR UPDATE;
+            """;
+
+        await connection.ExecuteScalarAsync<Guid>(
+            boardLockSql,
+            new { BoardId = sourceBoardId.Value },
+            transaction);
+
+        const string destinationSql = """
+            SELECT board_id
+            FROM columns
+            WHERE id = @ColumnId
+            FOR UPDATE;
+            """;
+
+        var destinationBoardId = await connection.QuerySingleOrDefaultAsync<Guid?>(
+            destinationSql,
+            new { command.ColumnId },
+            transaction);
+
+        if (!destinationBoardId.HasValue)
+            return MoveCardResult.DestinationColumnNotFound;
+
+        if (sourceBoardId.Value != destinationBoardId.Value)
+            return MoveCardResult.CrossBoardMove;
+
+        const string destinationCardsSql = """
+            SELECT id, position
+            FROM cards
+            WHERE column_id = @ColumnId AND id <> @Id
+            ORDER BY position, id
+            FOR UPDATE;
+            """;
+
+        var destinationCards = (
+            await connection.QueryAsync<PositionedItem>(
+                destinationCardsSql,
+                new { command.ColumnId, command.Id },
+                transaction)
+        ).AsList();
+
+        if (!FractionalPosition.TryCalculate(
+                destinationCards,
+                command.BeforeCardId,
+                command.AfterCardId,
+                out var newPosition))
         {
-            var hasOtherCards = await connection.ExecuteScalarAsync<bool>(
-                existingCard,
-                new { command.ColumnId, command.Id }
-            );
-
-            if (hasOtherCards)
-                return MoveCardResult.NeighborsRequired;
+            return MoveCardResult.InvalidNeighbors;
         }
 
-        // 1. Calculate new position
-        var newPosition = CalculatePosition(command.BeforePosition, command.AfterPosition);
-        // 2. Update both column_id and position in one SQL statement
-        const string sql = @"
-            UPDATE cards 
-            SET column_id = @ColumnId, position = @Position, updated_at = NOW()
-            WHERE id = @Id
-        ";
-        var rowsAffected = await connection.ExecuteAsync(sql, 
-            new { command.ColumnId, Position = newPosition, command.Id });
-       
-       if (rowsAffected == 0)
-          return MoveCardResult.CardNotFound;
+        const string updateSql = """
+            UPDATE cards
+            SET column_id = @ColumnId,
+                position = @Position,
+                updated_at = NOW()
+            WHERE id = @Id;
+            """;
 
+        var rowsAffected = await connection.ExecuteAsync(
+            updateSql,
+            new
+            {
+                command.Id,
+                command.ColumnId,
+                Position = newPosition
+            },
+            transaction);
+
+        if (rowsAffected == 0)
+            return MoveCardResult.CardNotFound;
+
+        transaction.Commit();
         return MoveCardResult.Moved;
-
-    }
-
-    private static double CalculatePosition(double? before, double? after)
-    {
-        if (!before.HasValue && !after.HasValue)
-            return 1.0;
-        if (before.HasValue && after.HasValue)
-            return (before.Value + after.Value) / 2;   // midpoint between neighbors
-        if (before.HasValue)
-            return before.Value + 1.0;                  // dropping at the bottom
-        return after!.Value / 2;                        // dropping at the top
     }
 }
-

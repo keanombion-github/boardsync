@@ -1,19 +1,23 @@
 namespace Boardsync.Api.Features.Cards.MoveCard;
 
-public record MoveCardBody(double? BeforePosition, double? AfterPosition, Guid ColumnId);
+public record MoveCardBody(
+    Guid ColumnId,
+    Guid? BeforeCardId,
+    Guid? AfterCardId);
 
 public enum MoveCardResult
 {
     Moved,
     CardNotFound,
-    NeighborsRequired
+    DestinationColumnNotFound,
+    CrossBoardMove,
+    InvalidNeighbors
 }
 
 public class MoveCardCommand
 {
-    public required Guid Id { get; set; } // card being move
-    public required Guid ColumnId { get; set; } // column id target
-    public double? BeforePosition { get; set; } 
-    public double? AfterPosition { get; set; } 
+    public required Guid Id { get; set; }
+    public required Guid ColumnId { get; set; }
+    public Guid? BeforeCardId { get; set; }
+    public Guid? AfterCardId { get; set; }
 }
-

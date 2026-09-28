@@ -8,7 +8,7 @@ public class CreateColumnValidator : AbstractValidator<CreateColumnCommand>
     {
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Column name is required.")
-            .MaximumLength(200).WithMessage("Column name cannot exceed 100 characters.");
+            .MaximumLength(200).WithMessage("Column name cannot exceed 200 characters.");
         
         RuleFor(x => x.BoardId)
             .NotEmpty().WithMessage("Board ID is required.")

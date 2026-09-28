@@ -17,8 +17,11 @@ public class GetBoardsHandler
         using var connection = _dbConnectionFactory.CreateConnection();
 
         const string sql = """
-            SELECT id, name Name FROM boards WHERE owner_id = @OwnerId;
-        """;
+            SELECT id, name AS Name
+            FROM boards
+            WHERE owner_id = @OwnerId
+            ORDER BY created_at DESC;
+            """;
 
         var board = await connection.QueryAsync<BoardDto>(sql, new { OwnerId = query.OwnerId });
 

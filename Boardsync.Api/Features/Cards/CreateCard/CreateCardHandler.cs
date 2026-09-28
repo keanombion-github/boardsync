@@ -12,31 +12,56 @@ public class CreateCardHandler
         _dbConnectionFactory = dbConnectionFactory;
     }
 
-    public async Task<Guid> HandleAsync(CreateCardCommand command)
+    public async Task<Guid?> HandleAsync(CreateCardCommand command)
     {
         using var connection = _dbConnectionFactory.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
 
-          const string positionQuery = @"
-            SELECT COALESCE(MAX(position), 0) 
+        const string columnLockSql = """
+            SELECT id
+            FROM columns
+            WHERE id = @ColumnId
+            FOR UPDATE;
+            """;
+
+        var columnId = await connection.QuerySingleOrDefaultAsync<Guid?>(
+            columnLockSql,
+            new { command.ColumnId },
+            transaction);
+
+        if (!columnId.HasValue)
+            return null;
+
+        const string positionSql = """
+            SELECT COALESCE(MAX(position), 0)
             FROM cards
-            WHERE column_id = @ColumnId
-        ";
+            WHERE column_id = @ColumnId;
+            """;
 
-        var maxPosition = await connection.ExecuteScalarAsync<double>(positionQuery, new { command.ColumnId });
-        
-        var newPosition = maxPosition + 1.0;
+        var maxPosition = await connection.ExecuteScalarAsync<double>(
+            positionSql,
+            new { command.ColumnId },
+            transaction);
 
-        // Parameterized query prevents SQL injection
-        const string sql = @"
+        const string insertSql = """
             INSERT INTO cards (title, description, column_id, position)
             VALUES (@Title, @Description, @ColumnId, @Position)
             RETURNING id;
-            ";
+            """;
 
-        // Dapper automatically maps the command properties to the @Name and @BoardId parameters
-        var cardId = await connection.ExecuteScalarAsync<Guid>(sql, new { command.Title, command.Description, command.ColumnId, Position = newPosition });
-        
+        var cardId = await connection.ExecuteScalarAsync<Guid>(
+            insertSql,
+            new
+            {
+                command.Title,
+                command.Description,
+                command.ColumnId,
+                Position = maxPosition + 1.0
+            },
+            transaction);
+
+        transaction.Commit();
         return cardId;
-
     }
 }

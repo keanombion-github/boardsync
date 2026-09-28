@@ -3,7 +3,8 @@ using FluentValidation;
 
 namespace Boardsync.Api.Features.Columns.ReorderColumn;
 
-public static class ReorderColumnEndpoint {
+public static class ReorderColumnEndpoint
+{
     public static void MapReorderColumnEndpoint(this IEndpointRouteBuilder app)
     {
         app.MapPut("/api/boards/{boardId}/columns/reorder", async (
@@ -11,14 +12,14 @@ public static class ReorderColumnEndpoint {
             ReorderColumnBody body,
             IValidator<ReorderColumnCommand> validator,
             ReorderColumnHandler handler
-        ) => {
-            
+        ) =>
+        {
             var command = new ReorderColumnCommand
             {
-                BoardId = boardId, 
-                ColumnId = body.ColumnId, 
-                BeforePosition = body.BeforePosition, 
-                AfterPosition = body.AfterPosition
+                BoardId = boardId,
+                ColumnId = body.ColumnId,
+                BeforeColumnId = body.BeforeColumnId,
+                AfterColumnId = body.AfterColumnId
             };
 
             var validationResult = await validator.ValidateAsync(command);
@@ -28,11 +29,22 @@ public static class ReorderColumnEndpoint {
                 return Results.BadRequest(response);
             }
 
-            var success = await handler.HandleAsync(command);
-            if (!success)
-            {
-                return Results.NotFound(ApiResponse<object>.Fail("NOT_FOUND", "Column not found."));
-            }
+            var result = await handler.HandleAsync(command);
+
+            if (result == ReorderColumnResult.BoardNotFound)
+                return Results.NotFound(
+                    ApiResponse<object>.Fail("NOT_FOUND", "Board not found."));
+
+            if (result == ReorderColumnResult.ColumnNotFound)
+                return Results.NotFound(
+                    ApiResponse<object>.Fail("NOT_FOUND", "Column not found on this board."));
+
+            if (result == ReorderColumnResult.InvalidNeighbors)
+                return Results.BadRequest(
+                    ApiResponse<object>.Fail(
+                        "INVALID_NEIGHBORS",
+                        "Column neighbors must be adjacent columns on this board."));
+
             return Results.Ok(ApiResponse<object>.Ok(new { boardId }));
         })
         .WithName("ReorderColumn")

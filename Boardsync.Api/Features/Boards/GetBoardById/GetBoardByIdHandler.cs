@@ -20,22 +20,31 @@ public class GetBoardByIdHandler
             SELECT 
                 b.id        AS Id,
                 b.name      AS Name,
+                (b.owner_id = @UserId) AS IsOwner,
                 c.id        AS ColumnId,
                 c.name      AS ColumnName,
                 c.position  AS ColumnPosition,
                 card.id          AS CardId,
                 card.title       AS CardTitle,
                 card.description AS CardDescription,
-                card.position    AS CardPosition
+                card.position    AS CardPosition,
+                card.assigned_to AS CardAssigneeId,
+                assignee.display_name AS CardAssigneeName
             FROM boards b
             LEFT JOIN columns c ON c.board_id = b.id
             LEFT JOIN cards card ON card.column_id = c.id
+            LEFT JOIN users assignee ON assignee.id = card.assigned_to
             WHERE b.id = @BoardId
-            ORDER BY c.position, card.position;
+              AND (b.owner_id = @UserId
+                   OR EXISTS (SELECT 1 FROM board_members AS member
+                              WHERE member.board_id = b.id AND member.user_id = @UserId))
+            ORDER BY c.position, c.id, card.position, card.id;
             """;
 
         // Step 1: fetch all flat rows
-        var rows = await connection.QueryAsync<BoardRow>(sql, new { query.BoardId });
+        var rows = await connection.QueryAsync<BoardRow>(
+            sql,
+            new { query.BoardId, query.UserId });
 
         // Step 2: if no rows at all, the board doesn't exist
         if (!rows.Any())
@@ -58,7 +67,9 @@ public class GetBoardByIdHandler
                     row.CardId!.Value,
                     row.CardTitle!,
                     row.CardDescription,
-                    row.CardPosition!.Value
+                    row.CardPosition!.Value,
+                    row.CardAssigneeId,
+                    row.CardAssigneeName
                 ))
                 .ToArray();
 
@@ -72,24 +83,29 @@ public class GetBoardByIdHandler
             })
             .ToArray();
 
-        return new BoardDetailDto(firstRow.Id, firstRow.Name, columns);
+        return new BoardDetailDto(firstRow.Id, firstRow.Name, firstRow.IsOwner, columns);
     }
 
     private record BoardRow(
         Guid Id,
         string Name,
+        bool IsOwner,
         Guid? ColumnId,
         string? ColumnName,
         double? ColumnPosition,
         Guid? CardId,
         string? CardTitle,
         string? CardDescription,
-        double? CardPosition
+        double? CardPosition,
+        Guid? CardAssigneeId,
+        string? CardAssigneeName
     );
 }
 
 // DTOs — defined here, in the same slice
 public record ColumnDto(Guid Id, string Name, double Position, IEnumerable<CardDto> Cards);
-public record BoardDetailDto(Guid Id, string Name, IEnumerable<ColumnDto> Columns);
+public record BoardDetailDto(Guid Id, string Name, bool IsOwner, IEnumerable<ColumnDto> Columns);
 
-public record CardDto(Guid Id, string Title, string? Description, double Position);
+public record CardDto(
+    Guid Id, string Title, string? Description, double Position,
+    Guid? AssigneeId, string? AssigneeName);

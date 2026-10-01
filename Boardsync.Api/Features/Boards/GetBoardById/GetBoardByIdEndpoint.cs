@@ -1,5 +1,6 @@
 using Boardsync.Api.Common.Models;
-using FluentValidation;
+using Boardsync.Api.Common.Auth;
+using System.Security.Claims;
 
 namespace Boardsync.Api.Features.Boards.GetBoardById;
 
@@ -9,9 +10,14 @@ public static class GetBoardByIdEndpoint
     {
         app.MapGet("/api/boards/{id}", async (
             Guid id,
+            ClaimsPrincipal principal,
             GetBoardByIdHandler handler) =>
         {
-            var query = new GetBoardByIdQuery { BoardId = id };
+            var query = new GetBoardByIdQuery
+            {
+                BoardId = id,
+                UserId = principal.GetRequiredUserId()
+            };
             var board = await handler.HandleAsync(query);
 
             if (board is null)
@@ -19,6 +25,7 @@ public static class GetBoardByIdEndpoint
 
             return Results.Ok(ApiResponse<object>.Ok(board));
         })
+        .RequireAuthorization()
         .WithName("GetBoardById")
         .WithTags("Boards");
     }

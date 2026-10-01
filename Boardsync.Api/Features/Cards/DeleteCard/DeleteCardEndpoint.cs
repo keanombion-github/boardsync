@@ -1,4 +1,6 @@
 using Boardsync.Api.Common.Models;
+using Boardsync.Api.Common.Auth;
+using System.Security.Claims;
 
 namespace Boardsync.Api.Features.Cards.DeleteCard;
 
@@ -8,12 +10,14 @@ public static class DeleteCardEndpoint
     {
         app.MapDelete("/api/cards/{id}", async (
             Guid id,
+            ClaimsPrincipal principal,
             DeleteCardHandler handler
         ) =>
         {
             var command = new DeleteCardCommand
             {
-                Id = id
+                Id = id,
+                UserId = principal.GetRequiredUserId()
             };
 
             var deleted = await handler.HandleAsync(command);
@@ -21,6 +25,7 @@ public static class DeleteCardEndpoint
                 return Results.NotFound(ApiResponse<object>.Fail("NOT_FOUND", "Card not found."));
             return Results.NoContent();
         })
+        .RequireAuthorization()
         .WithName("DeleteCard")
         .WithTags("Cards");
     }

@@ -113,6 +113,41 @@ public class FractionalPositionTests
     }
 
     [Fact]
+    public void NoRepresentableMidpoint_IsRejected()
+    {
+        PositionedItem[] adjacentDoubles =
+        [
+            new(FirstId, 1.0),
+            new(SecondId, double.BitIncrement(1.0))
+        ];
+
+        var valid = FractionalPosition.TryCalculate(
+            adjacentDoubles,
+            FirstId,
+            SecondId,
+            out _);
+
+        Assert.False(valid);
+    }
+
+    [Fact]
+    public void NoRepresentablePositionAfterLast_IsRejected()
+    {
+        PositionedItem[] largePosition =
+        [
+            new(FirstId, Math.Pow(2, 53))
+        ];
+
+        var valid = FractionalPosition.TryCalculate(
+            largePosition,
+            FirstId,
+            null,
+            out _);
+
+        Assert.False(valid);
+    }
+
+    [Fact]
     public void UnknownNeighbor_IsRejected()
     {
         var valid = FractionalPosition.TryCalculate(

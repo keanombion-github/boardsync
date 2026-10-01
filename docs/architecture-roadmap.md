@@ -370,8 +370,8 @@ The primary purpose of this project is **skill development and deep system desig
 
 | Tool | Version | Notes |
 |---|---|---|
-| .NET SDK | 9.0.301 | Using .NET 9 (latest, compatible with .NET 8 patterns) |
-| Node.js | v20.13.1 | For Next.js frontend |
+| .NET SDK | 10.0.401 | .NET 10 LTS; pinned through `global.json` |
+| Node.js | v24.21.0 | Matches `.nvmrc` and CI's Node 24 line |
 | PostgreSQL | 18.0 | Installed locally as Windows service, no Docker |
 | Docker | Skipped | Machine cannot support it; using local installs instead |
 

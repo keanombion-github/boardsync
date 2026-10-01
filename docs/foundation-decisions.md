@@ -6,7 +6,7 @@ This note records the reasons behind the current pre-authentication foundation. 
 
 TanStack Query stores fetched boards in a client cache. Create, update, move, and delete operations write through the API first. On success, the frontend invalidates the exact affected query key and refetches the server representation.
 
-- Board list key: `["boards", ownerId]`
+- Board list key: `["boards"]` because the authenticated identity scopes the response
 - Board detail key: `["board", boardId]`
 
 This prevents a failed write from being presented as persisted data. It costs an additional GET after each mutation and can produce a brief visual snap-back during drag operations. Optimistic updates are deferred until the write paths and rollback behavior are tested.
@@ -32,11 +32,12 @@ The database cascade is preferred over issuing one DELETE per card because it is
 
 Create forms and delete dialogs own their own mutation, pending, and error state. The board view owns card movement because drag events and neighbor calculation happen at that level. This keeps feature behavior close to the component that initiates it without introducing a global client-state store for server data.
 
-## Demo identity is an explicit temporary boundary
+## Authenticated identity is the authorization boundary
 
-Before JWT authentication, the dashboard reads `NEXT_PUBLIC_DEMO_OWNER_ID`. It is a development identity, not authorization. The value is public in the browser bundle and the API currently trusts caller-supplied owner IDs.
-
-Authentication must replace this design by deriving the user ID from verified token claims on the server. The client should then stop sending or configuring owner identity.
+The API derives the current user ID from the validated JWT `sub` claim. The client
+does not send an owner ID, and handlers include the authenticated ID in their SQL
+ownership predicates. This prevents a caller from changing an ID in a request to
+access another user's data.
 
 ## Indexes follow observed access paths
 

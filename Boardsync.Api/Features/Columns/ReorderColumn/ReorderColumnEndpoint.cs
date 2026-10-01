@@ -1,5 +1,7 @@
 using Boardsync.Api.Common.Models;
+using Boardsync.Api.Common.Auth;
 using FluentValidation;
+using System.Security.Claims;
 
 namespace Boardsync.Api.Features.Columns.ReorderColumn;
 
@@ -10,6 +12,7 @@ public static class ReorderColumnEndpoint
         app.MapPut("/api/boards/{boardId}/columns/reorder", async (
             Guid boardId,
             ReorderColumnBody body,
+            ClaimsPrincipal principal,
             IValidator<ReorderColumnCommand> validator,
             ReorderColumnHandler handler
         ) =>
@@ -17,6 +20,7 @@ public static class ReorderColumnEndpoint
             var command = new ReorderColumnCommand
             {
                 BoardId = boardId,
+                UserId = principal.GetRequiredUserId(),
                 ColumnId = body.ColumnId,
                 BeforeColumnId = body.BeforeColumnId,
                 AfterColumnId = body.AfterColumnId
@@ -47,6 +51,7 @@ public static class ReorderColumnEndpoint
 
             return Results.Ok(ApiResponse<object>.Ok(new { boardId }));
         })
+        .RequireAuthorization()
         .WithName("ReorderColumn")
         .WithTags("Columns");
     }

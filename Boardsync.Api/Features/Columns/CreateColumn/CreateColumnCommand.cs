@@ -6,4 +6,5 @@ public class CreateColumnCommand
 {
     public required string Name { get; set; }
     public required Guid BoardId { get; set; }
+    public required Guid UserId { get; set; }
 }

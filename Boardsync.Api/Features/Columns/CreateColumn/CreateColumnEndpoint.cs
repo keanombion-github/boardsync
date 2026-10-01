@@ -1,5 +1,7 @@
 using Boardsync.Api.Common.Models;
+using Boardsync.Api.Common.Auth;
 using FluentValidation;
+using System.Security.Claims;
 
 namespace Boardsync.Api.Features.Columns.CreateColumn;
 
@@ -10,6 +12,7 @@ public static class CreateColumnEndpoint
         app.MapPost("/api/boards/{boardId}/columns", async (
             Guid boardId,
             CreateColumnBody body,
+            ClaimsPrincipal principal,
             IValidator<CreateColumnCommand> validator,
             CreateColumnHandler handler
         ) =>
@@ -17,7 +20,8 @@ public static class CreateColumnEndpoint
             var command = new CreateColumnCommand
             {
                 Name = body.Name,
-                BoardId = boardId
+                BoardId = boardId,
+                UserId = principal.GetRequiredUserId()
             };
             var validationResult = await validator.ValidateAsync(command);
             if (!validationResult.IsValid)
@@ -33,10 +37,11 @@ public static class CreateColumnEndpoint
                 return Results.NotFound(
                     ApiResponse<object>.Fail("NOT_FOUND", "Board not found."));
 
-            return Results.Created(
-                $"/api/boards/{command.BoardId}/columns/{columnId}",
-                ApiResponse<object>.Ok(new { Id = columnId.Value }));
+            return Results.Json(
+                ApiResponse<object>.Ok(new { Id = columnId.Value }),
+                statusCode: StatusCodes.Status201Created);
         })
+        .RequireAuthorization()
         .WithName("CreateColumn")
         .WithTags("Columns");
     }

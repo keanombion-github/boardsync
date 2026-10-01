@@ -1,29 +1,89 @@
 # Verified Project State
 
-Reviewed 2026-09-28. Phase 2a, core CRUD in progress.
+Reviewed 2026-10-01. Core Kanban, authentication, owner authorization, production
+middleware, CI, and deployment configuration are implemented. External deployment
+has not been performed.
+
+Collaboration increment, 2026-10-01: migrations 007-009 add comments, reactions,
+attachment links, and board membership. The API supports member-scoped board
+work, assignee changes, comment creation, reaction toggles, and link add/remove.
+The frontend uses Inter, a shared left board sidebar, a members dialog, an
+assignee badge/selector, and a ticket activity dialog. The latest .NET Release
+build/test (14 passed), frontend lint/build, and Vitest (6 passed) all pass.
+Live two-account HTTP checks confirmed access before/after invite and removal,
+member-created card, assignment readback, comment/reaction, attachment
+add/remove, and URL rejection. Disposable accounts were deleted. New browser
+interactions and hosted behavior still need manual acceptance.
+
+Drag-preview and ticket-discovery fix, 2026-10-02: the board renders a floating
+card overlay during drag and a dashed insertion slot in a hovered destination
+column. Cancel clears the preview; drop still uses the existing server-calculated
+neighbor request. Every card shows its assignee or "Unassigned" and has a
+labeled **Details & comments** action. Frontend lint, production build, and six
+ordering tests pass. Browser automation could not start on this workstation,
+so visual hover and modal interaction remain for the user's manual test.
+
+Local runtime fix, 2026-10-02: a Debug API process on port 5230 and Next dev
+process on port 3000 had started before the collaboration code was added. The
+old API returned 404 for the new activity/members routes. Both local services
+were restarted from current source; `/health` and the frontend return 200, and
+the activity route now returns 401 without a token, proving it is mapped and
+protected. A disposable authenticated smoke on port 5230 returned 200 for
+members and assignment, 201 for comment creation, and 200 for activity readback
+with the assignee and comment; its board/account were removed. The ticket dialog
+now explains member-loading failures and places comments immediately after the
+assignee selector. Browser interaction still needs the user's confirmation.
 
 ## Implemented source
-- Backend targets net9.0, rather than the planned .NET 8.
+- Backend and tests target net10.0. CI and the Docker runtime use .NET 10, and
+  `global.json` pins the 10.0.4xx SDK feature band.
 - Program.cs maps CreateBoard, GetBoards, GetBoardById; CreateColumn, DeleteColumn, ReorderColumn; CreateCard, UpdateCard, DeleteCard, MoveCard.
-- DbUp embeds migrations 001-005 for users, boards, columns, cards, and query indexes; API startup runs migrations.
+- DbUp embeds migrations 001-009 for users, boards, columns, cards, indexes,
+  refresh tokens, card activity, attachment links, and board membership; API
+  startup runs migrations.
 - GetBoardById returns a board with ordered columns and nested ordered card arrays using one joined query.
-- Frontend: Next.js 16.2.10, React 19.2.4, TanStack Query, board dashboard/detail routes, card CRUD, persisted card movement, column create/delete, and column drag reordering.
-- An xUnit project covers the shared fractional-position invariant. No auth slices, frontend test script, or CI workflow exist yet.
+- Frontend: Next.js 16.3.8, React 19.2.4, TanStack Query, authenticated dashboard/detail
+  routes, shared board sidebar, card CRUD/activity/assignment, persisted movement,
+  column create/delete, and column drag reordering.
+- JWT access tokens, rotating hashed refresh tokens, HttpOnly cookies, register/login/
+  refresh/logout/me endpoints, and claim-derived ownership are implemented.
+- A GitHub Actions workflow is configured to build/test the backend and lint/build
+  the frontend; it has not run on the remote repository yet. A Render
+  Blueprint, non-root API Dockerfile, health check, and Vercel runbook are present.
+- Fourteen xUnit tests cover fractional positioning, token generation, and Render
+  database-URI conversion. Six Vitest tests cover card and column neighbor
+  derivation for drag ordering.
 
 ## Known issues / learning tasks
-1. Repeated midpoint insertion can exhaust floating-point gaps. Define a position-normalization threshold and transaction before real-time collaboration.
-2. MoveCard now resolves neighbor IDs on the server and rejects cross-board destinations, but authentication/authorization is still absent; the API is not production-secure.
-3. The dashboard uses `NEXT_PUBLIC_DEMO_OWNER_ID` until authentication derives identity from verified server-side claims.
-4. The updated neighbor-ID move contract, column reordering, board/column creation, and column deletion need browser/API/database runtime verification.
+1. The public Git history contains an old local PostgreSQL password. It was rotated
+   and the historic credential was rejected on 2026-10-01. The role is shared by a
+   cluster with four non-template databases; other local clients using `postgres`
+   may need their saved passwords updated.
+2. Repeated midpoint insertion can exhaust floating-point gaps. Define a position-normalization threshold and transaction before real-time collaboration.
+3. Refresh-token reuse detection is intentionally strict and can sign out concurrent
+   tabs that refresh at nearly the same moment.
+4. Docker cannot be executed on this workstation because Docker is not installed;
+   the Dockerfile needs its first build in CI or Render.
+5. Render free PostgreSQL expires after 30 days; use paid or alternative persistent
+   storage for a durable public portfolio demo.
+6. The browser automation runtime failed to initialize, and no Render/Vercel CLI
+   credentials are available here. Hosted deployment and browser acceptance still
+   need account access and a live smoke test.
 
 ## Verification
-- Backend dotnet build --no-restore passed with zero warnings/errors.
-- The eight FractionalPosition xUnit tests pass.
-- Frontend ESLint and the Next.js production build pass.
+- Backend .NET 10 Release build and publish passed with zero warnings/errors. The
+  local .NET 10 API started, checked DbUp migrations, and `/health` returned 200.
+- All fourteen xUnit tests pass.
+- Frontend ESLint and the Next.js 16.3.8 production build pass.
+- All six Vitest ordering tests pass.
+- NuGet reported no known vulnerable packages. npm production audit reports zero
+  vulnerabilities after the Next.js security upgrade.
 - Runtime evidence is recorded below. The 2026-09-27 additions have static build verification only; migration 005 and the new mutations have not been exercised against the live database.
 
 ## Resume checkpoint
-Runtime-test the dashboard and updated ordering contract: create/open a board, create at least three columns, reorder them in both directions, move cards at top/middle/bottom and across columns, cancel one deletion, then confirm deletion and refresh. After that, begin authentication design or add API integration tests.
+Walk through the new membership, assignment, activity, and sidebar interactions
+in `docs/feature-review.md`, then validate the Docker image in Render and
+perform the deployment runbook with real Render and Vercel URLs.
 
 The next ownership checkpoint is to explain why the client sends neighbor IDs instead of positions, what the parent-row lock prevents, and why the UI refetches after a successful mutation. AI-written source is not counted as learning evidence until that explanation or an independent change demonstrates it.
 
@@ -75,3 +135,46 @@ Product direction captured (2026-09-21): evolve Boardsync toward a Jira-style da
 Static implementation (2026-09-27): added a pre-auth board dashboard with typed create/open flow, board-level column creation, confirmed column deletion, exact-query invalidation, stable board ordering, and query-path indexes in migration 005. DeleteColumn now scopes its SQL by board and column and returns 404 when the pair does not exist. Backend build, frontend lint, and frontend production build pass. Runtime HTTP/database checks remain pending.
 
 Static implementation (2026-09-28): replaced client-supplied ordering numbers with neighbor IDs for cards and columns. The API resolves and validates adjacent siblings, blocks cross-board card moves, calculates fractional positions centrally, and serializes position reads/writes with parent-row locks and transactions. Added frontend column drag reordering and eight xUnit ordering tests. Runtime HTTP/database and drag-interaction verification remain pending.
+
+User runtime evidence (2026-09-28): user reports the completed dashboard, board/column/card CRUD, card movement, and column ordering flows are working. Phase 2a is treated as complete. Phase 2b begins with registration and secure password persistence.
+
+Implementation/runtime evidence (2026-10-01): register/login/refresh/logout/me and
+claim-derived owner scoping are implemented. Disposable-account checks confirmed
+registration 201, duplicate conflict 409, wrong-password 401, authenticated me
+200, cross-owner board read 404, refresh rotation 200, logout 204, and refresh
+after logout 401. Board rename returned 200 and read back the new name; board
+delete returned 204 and subsequent read returned 404.
+
+Deployment-path evidence (2026-10-01): a Next.js same-origin rewrite proxied login
+to the API, preserved the HttpOnly refresh cookie at `/backend/api/auth`, and
+successfully refreshed the session through the proxy. Backend build and 12 tests,
+frontend lint/build and 6 tests, NuGet vulnerability audit, and npm production
+audit pass. Docker execution remains unavailable locally.
+
+Visual review (2026-10-01): the login, dashboard, empty board, and populated-column
+states were inspected in the browser. Board columns, cards, forms, and confirmation
+dialogs now use the same dark glass visual system as authentication and dashboard
+screens. A local account, board, and column were created through the rendered UI;
+the browser-to-API requests returned 200/201 and persisted across refresh.
+
+.NET 10 migration evidence (2026-10-01): installed SDK 10.0.401 in the user profile,
+retargeted the API and test project to net10.0, aligned JWT/Serilog packages, Docker,
+and CI, and added `global.json`. Release build and publish pass with zero warnings;
+all 12 backend tests pass on net10.0 and the NuGet vulnerability audit is clean.
+
+Release API smoke (2026-10-01): rotated the shared local PostgreSQL password,
+confirmed the previously committed value is rejected, and verified `/health` 200
+using the new .NET user-secret. After removing two invalid `Location` headers and
+rejecting unrepresentable fractional positions, the .NET 10 Release build passes
+with zero warnings and all 14 xUnit tests pass. A disposable-account HTTP smoke
+passed 29 checks across registration/login/me/refresh/logout, board CRUD, column
+create/reorder/delete, card create/edit/move/delete, ordered readback, validation,
+owner isolation, and response headers. Smoke data was removed afterward.
+Eleven invalid login requests with distinct `X-Forwarded-For` values reached the
+same rate-limit bucket; the eleventh returned 429 after the API stopped accepting
+forwarded client IP addresses.
+
+Frontend release review (2026-10-01): logout now keeps the local session intact
+when its API request fails and shows a retryable error; drag errors use readable
+contrast on the dark board. Frontend ESLint and production build pass after the
+change. A browser network-failure interaction still needs manual confirmation.

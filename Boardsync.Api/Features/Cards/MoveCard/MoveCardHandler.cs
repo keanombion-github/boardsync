@@ -23,12 +23,16 @@ public class MoveCardHandler
             SELECT col.board_id AS BoardId
             FROM cards AS c
             JOIN columns AS col ON col.id = c.column_id
-            WHERE c.id = @Id;
+            JOIN boards AS b ON b.id = col.board_id
+            WHERE c.id = @Id
+              AND (b.owner_id = @UserId
+                   OR EXISTS (SELECT 1 FROM board_members AS member
+                              WHERE member.board_id = b.id AND member.user_id = @UserId));
             """;
 
         var sourceBoardId = await connection.QuerySingleOrDefaultAsync<Guid?>(
             cardScopeSql,
-            new { command.Id },
+            new { command.Id, command.UserId },
             transaction);
 
         if (!sourceBoardId.HasValue)
@@ -47,15 +51,19 @@ public class MoveCardHandler
             transaction);
 
         const string destinationSql = """
-            SELECT board_id
-            FROM columns
-            WHERE id = @ColumnId
-            FOR UPDATE;
+            SELECT col.board_id
+            FROM columns AS col
+            JOIN boards AS b ON b.id = col.board_id
+            WHERE col.id = @ColumnId
+              AND (b.owner_id = @UserId
+                   OR EXISTS (SELECT 1 FROM board_members AS member
+                              WHERE member.board_id = b.id AND member.user_id = @UserId))
+            FOR UPDATE OF col;
             """;
 
         var destinationBoardId = await connection.QuerySingleOrDefaultAsync<Guid?>(
             destinationSql,
-            new { command.ColumnId },
+            new { command.ColumnId, command.UserId },
             transaction);
 
         if (!destinationBoardId.HasValue)

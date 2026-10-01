@@ -12,5 +12,7 @@ public class DeleteColumnValidator : AbstractValidator<DeleteColumnCommand>
         RuleFor(x => x.ColumnId)
             .NotEmpty().WithMessage("Column ID is required.")
             .NotEqual(Guid.Empty).WithMessage("Column ID must be a valid UUID.");
+
+        RuleFor(x => x.UserId).NotEmpty();
     }
 }

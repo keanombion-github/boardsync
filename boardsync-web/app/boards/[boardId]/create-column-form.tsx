@@ -49,7 +49,7 @@ export function CreateColumnForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 space-y-4 border-t pt-4">
+    <form onSubmit={handleSubmit} className="mt-4 space-y-4 border-t border-white/10 pt-4">
       <div>
         <label
           htmlFor="column-name"
@@ -66,13 +66,13 @@ export function CreateColumnForm({
           placeholder="For example: Done"
           maxLength={200}
           disabled={createColumnMutation.isPending}
-          className="w-full rounded-md border bg-white px-3 py-2 text-sm text-gray-950"
+          className="w-full rounded-lg border border-white/15 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-cyan-300/60"
           autoFocus
         />
       </div>
 
       {createColumnMutation.isError && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-red-300">
           {createColumnMutation.error.message}
         </p>
       )}
@@ -80,7 +80,7 @@ export function CreateColumnForm({
       <button
         type="submit"
         disabled={createColumnMutation.isPending || !name.trim()}
-        className="w-full rounded-md bg-black px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-lg bg-cyan-300 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {createColumnMutation.isPending ? "Creating..." : "Create column"}
       </button>

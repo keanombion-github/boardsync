@@ -7,6 +7,7 @@ public class ReorderColumnValidator : AbstractValidator<ReorderColumnCommand>
     public ReorderColumnValidator()
     {
         RuleFor(x => x.BoardId).NotEmpty();
+        RuleFor(x => x.UserId).NotEmpty();
         RuleFor(x => x.ColumnId).NotEmpty();
 
         RuleFor(x => x)

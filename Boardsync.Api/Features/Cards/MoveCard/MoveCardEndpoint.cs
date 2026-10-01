@@ -1,5 +1,7 @@
 using Boardsync.Api.Common.Models;
+using Boardsync.Api.Common.Auth;
 using FluentValidation;
+using System.Security.Claims;
 
 namespace Boardsync.Api.Features.Cards.MoveCard;
 
@@ -10,6 +12,7 @@ public static class MoveCardEndpoint
         app.MapPut("/api/cards/{id}/move", async (
             Guid id,
             MoveCardBody body,
+            ClaimsPrincipal principal,
             IValidator<MoveCardCommand> validator,
             MoveCardHandler handler
         ) =>
@@ -17,6 +20,7 @@ public static class MoveCardEndpoint
             var command = new MoveCardCommand
             {
                 Id = id,
+                UserId = principal.GetRequiredUserId(),
                 ColumnId = body.ColumnId,
                 BeforeCardId = body.BeforeCardId,
                 AfterCardId = body.AfterCardId
@@ -59,6 +63,7 @@ public static class MoveCardEndpoint
 
             return Results.Ok(ApiResponse<object>.Ok(new { id }));
         })
+        .RequireAuthorization()
         .WithName("MoveCard")
         .WithTags("Cards");
     }

@@ -19,15 +19,19 @@ public class CreateCardHandler
         using var transaction = connection.BeginTransaction();
 
         const string columnLockSql = """
-            SELECT id
-            FROM columns
-            WHERE id = @ColumnId
-            FOR UPDATE;
+            SELECT c.id
+            FROM columns AS c
+            JOIN boards AS b ON b.id = c.board_id
+            WHERE c.id = @ColumnId
+              AND (b.owner_id = @UserId
+                   OR EXISTS (SELECT 1 FROM board_members AS member
+                              WHERE member.board_id = b.id AND member.user_id = @UserId))
+            FOR UPDATE OF c;
             """;
 
         var columnId = await connection.QuerySingleOrDefaultAsync<Guid?>(
             columnLockSql,
-            new { command.ColumnId },
+            new { command.ColumnId, command.UserId },
             transaction);
 
         if (!columnId.HasValue)

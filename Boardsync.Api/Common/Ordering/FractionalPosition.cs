@@ -27,7 +27,9 @@ public static class FractionalPosition
                 return false;
 
             position = orderedItems[0].Position / 2.0;
-            return double.IsFinite(position) && position > 0;
+            return double.IsFinite(position)
+                && position > 0
+                && position < orderedItems[0].Position;
         }
 
         if (!afterId.HasValue)
@@ -38,7 +40,8 @@ public static class FractionalPosition
                 return false;
 
             position = lastItem.Position + 1.0;
-            return double.IsFinite(position) && position > 0;
+            return double.IsFinite(position)
+                && position > lastItem.Position;
         }
 
         var beforeIndex = FindIndex(orderedItems, beforeId.Value);
@@ -58,7 +61,9 @@ public static class FractionalPosition
             + orderedItems[afterIndex].Position
         ) / 2.0;
 
-        return double.IsFinite(position) && position > 0;
+        return double.IsFinite(position)
+            && position > orderedItems[beforeIndex].Position
+            && position < orderedItems[afterIndex].Position;
     }
 
     private static int FindIndex(

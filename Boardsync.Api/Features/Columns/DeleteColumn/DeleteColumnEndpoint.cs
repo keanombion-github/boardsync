@@ -1,5 +1,7 @@
 using Boardsync.Api.Common.Models;
+using Boardsync.Api.Common.Auth;
 using FluentValidation;
+using System.Security.Claims;
 
 namespace Boardsync.Api.Features.Columns.DeleteColumn;
 
@@ -10,6 +12,7 @@ public static class DeleteColumnEndpoint
         app.MapDelete("/api/boards/{boardId}/columns/{columnId}", async (
             Guid boardId,
             Guid columnId,
+            ClaimsPrincipal principal,
             IValidator<DeleteColumnCommand> validator,
             DeleteColumnHandler handler
         ) =>
@@ -17,7 +20,8 @@ public static class DeleteColumnEndpoint
             var command = new DeleteColumnCommand
             {
                 BoardId = boardId,
-                ColumnId = columnId
+                ColumnId = columnId,
+                UserId = principal.GetRequiredUserId()
             };
             var validationResult = await validator.ValidateAsync(command);
             if (!validationResult.IsValid)
@@ -37,6 +41,7 @@ public static class DeleteColumnEndpoint
 
             return Results.NoContent();
         })
+        .RequireAuthorization()
         .WithName("DeleteColumn")
         .WithTags("Columns");
     }

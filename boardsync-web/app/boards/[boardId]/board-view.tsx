@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   useMutation,
   useQuery,
@@ -10,148 +11,40 @@ import {
   getBoardById,
   moveCard,
   reorderColumn,
-  type BoardDetail,
+  type Card,
 } from "@/lib/api/boards";
 import BoardColumn from "./board-column";
 import { CreateColumnDialog } from "./create-column-dialog";
+import { EditBoardDialog } from "@/app/edit-board-dialog";
+import { DeleteBoardDialog } from "@/app/delete-board-dialog";
+import { BoardMembersDialog } from "./board-members-dialog";
 import {
   closestCenter,
   DndContext,
+  DragOverlay,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   horizontalListSortingStrategy,
   SortableContext,
 } from "@dnd-kit/sortable";
+import { getColumnNeighbors, getMoveNeighbors } from "./board-ordering";
 
 type BoardViewProps = {
   boardId: string;
 };
 
-type DropTargetType = "card" | "column";
-
-type MoveNeighbors = {
-  beforeCardId: string | null;
+type CardDropPreview = {
+  cardId: string;
+  columnId: string;
   afterCardId: string | null;
 };
 
-type ColumnNeighbors = {
-  beforeColumnId: string | null;
-  afterColumnId: string | null;
-};
-
-function getMoveNeighbors(
-  board: BoardDetail,
-  cardId: string,
-  destinationColumnId: string,
-  overId: string,
-  overType: DropTargetType,
-): MoveNeighbors | null {
-  const destinationColumn = board.columns.find(
-    (column) => column.id === destinationColumnId,
-  );
-
-  if (!destinationColumn) {
-    return null;
-  }
-
-  const destinationCards = destinationColumn.cards.filter(
-    (card) => card.id !== cardId,
-  );
-
-  const sourceColumn = board.columns.find((column) =>
-    column.cards.some((card) => card.id === cardId),
-  );
-
-  if (overType === "card" && sourceColumn?.id === destinationColumnId) {
-    const activeIndex = destinationColumn.cards.findIndex(
-      (card) => card.id === cardId,
-    );
-    const overIndex = destinationColumn.cards.findIndex(
-      (card) => card.id === overId,
-    );
-
-    if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) {
-      return null;
-    }
-
-    const reorderedCards = arrayMove(
-      destinationColumn.cards,
-      activeIndex,
-      overIndex,
-    );
-    const newIndex = reorderedCards.findIndex((card) => card.id === cardId);
-
-    return {
-      beforeCardId: reorderedCards[newIndex - 1]?.id ?? null,
-      afterCardId: reorderedCards[newIndex + 1]?.id ?? null,
-    };
-  }
-
-  if (overType === "column") {
-    const lastCard = destinationCards.at(-1);
-
-    return {
-      beforeCardId: lastCard?.id ?? null,
-      afterCardId: null,
-    };
-  }
-
-  const targetIndex = destinationCards.findIndex(
-    (card) => card.id === overId,
-  );
-
-  if (targetIndex === -1) {
-    return null;
-  }
-
-  const targetCard = destinationCards[targetIndex];
-
-  if (!targetCard) {
-    return null;
-  }
-
-  const previousCard = destinationCards[targetIndex - 1];
-
-  return {
-    beforeCardId: previousCard?.id ?? null,
-    afterCardId: targetCard.id,
-  };
-}
-
-function getColumnNeighbors(
-  board: BoardDetail,
-  columnId: string,
-  overColumnId: string,
-): ColumnNeighbors | null {
-  const activeIndex = board.columns.findIndex(
-    (column) => column.id === columnId,
-  );
-  const overIndex = board.columns.findIndex(
-    (column) => column.id === overColumnId,
-  );
-
-  if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) {
-    return null;
-  }
-
-  const reorderedColumns = arrayMove(
-    board.columns,
-    activeIndex,
-    overIndex,
-  );
-  const newIndex = reorderedColumns.findIndex(
-    (column) => column.id === columnId,
-  );
-
-  return {
-    beforeColumnId: reorderedColumns[newIndex - 1]?.id ?? null,
-    afterColumnId: reorderedColumns[newIndex + 1]?.id ?? null,
-  };
-}
-
 export function BoardView({ boardId }: BoardViewProps) {
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [cardDropPreview, setCardDropPreview] = useState<CardDropPreview | null>(null);
   const {
     data: board,
     isLoading,
@@ -183,8 +76,57 @@ export function BoardView({ boardId }: BoardViewProps) {
     },
   });
 
+  function clearDragPreview() {
+    setActiveCardId(null);
+    setCardDropPreview(null);
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveCardId(
+      event.active.data.current?.type === "card" ? String(event.active.id) : null,
+    );
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!board || active.data.current?.type !== "card" || !over) {
+      setCardDropPreview(null);
+      return;
+    }
+
+    const cardId = String(active.id);
+    const sourceColumnId = active.data.current.columnId;
+    const columnId = over.data.current?.columnId;
+    const overType = over.data.current?.type;
+    if (
+      typeof columnId !== "string"
+      || sourceColumnId === columnId
+      || (overType !== "card" && overType !== "column")
+    ) {
+      setCardDropPreview(null);
+      return;
+    }
+
+    const neighbors = getMoveNeighbors(
+      board, cardId, columnId, String(over.id), overType,
+    );
+    if (!neighbors) {
+      setCardDropPreview(null);
+      return;
+    }
+
+    setCardDropPreview((current) =>
+      current?.cardId === cardId
+      && current.columnId === columnId
+      && current.afterCardId === neighbors.afterCardId
+        ? current
+        : { cardId, columnId, afterCardId: neighbors.afterCardId },
+    );
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    clearDragPreview();
 
     if (
       !board
@@ -261,44 +203,59 @@ export function BoardView({ boardId }: BoardViewProps) {
   }
 
   if (isLoading) {
-    return <p>Loading board...</p>;
+    return <p className="text-sm text-slate-400">Loading board...</p>;
   }
 
   if (isError) {
-    return <p>Failed to load board.</p>;
+    return <p className="text-sm text-red-300">Failed to load board.</p>;
   }
 
   if (!board) {
-    return <p>Board data is unavailable.</p>;
+    return <p className="text-sm text-slate-400">Board data is unavailable.</p>;
   }
 
+  const activeCard: Card | undefined = board.columns
+    .flatMap((column) => column.cards)
+    .find((card) => card.id === activeCardId);
+
   return (
-    <section className="p-6">
-      <div className="mb-6 flex items-center justify-between gap-4">
+    <section className="mx-auto w-full max-w-[1600px] px-4 py-8 sm:px-8">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">
+          <Link href="/" className="text-sm text-slate-400 hover:text-cyan-300">
             Back to boards
           </Link>
-          <h1 className="mt-1 text-2xl font-bold">{board.name}</h1>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-100">{board.name}</h1>
         </div>
-        <CreateColumnDialog boardId={boardId} />
+        <div className="flex items-center gap-2">
+          <BoardMembersDialog boardId={boardId} isOwner={board.isOwner} />
+          {board.isOwner && <EditBoardDialog board={board} />}
+          {board.isOwner && <DeleteBoardDialog board={board} returnToDashboard />}
+          <CreateColumnDialog boardId={boardId} />
+        </div>
       </div>
 
       {moveCardMutation.isError && (
-        <p role="alert" className="mb-4 text-sm text-red-600">
+        <p role="alert" className="mb-4 text-sm text-red-300">
           {moveCardMutation.error.message}
         </p>
       )}
 
       {reorderColumnMutation.isError && (
-        <p role="alert" className="mb-4 text-sm text-red-600">
+        <p role="alert" className="mb-4 text-sm text-red-300">
           {reorderColumnMutation.error.message}
         </p>
       )}
 
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragCancel={clearDragPreview}
+        onDragEnd={handleDragEnd}
+      >
         {board.columns.length === 0 ? (
-          <p className="rounded-lg border border-dashed p-8 text-center text-sm text-gray-600">
+          <p className="rounded-2xl border border-dashed border-white/15 bg-white/5 p-10 text-center text-sm text-slate-400 backdrop-blur-xl">
             This board has no columns yet. Add one to define its first workflow
             stage.
           </p>
@@ -313,11 +270,24 @@ export function BoardView({ boardId }: BoardViewProps) {
                   key={column.id}
                   column={column}
                   boardId={boardId}
+                  dropPreview={
+                    cardDropPreview?.columnId === column.id && activeCard
+                      ? { card: activeCard, afterCardId: cardDropPreview.afterCardId }
+                      : null
+                  }
                 />
               ))}
             </div>
           </SortableContext>
         )}
+        <DragOverlay dropAnimation={null}>
+          {activeCard && (
+            <div className="w-72 rotate-1 rounded-xl border border-cyan-300/50 bg-slate-900 p-4 text-slate-100 shadow-2xl shadow-black/50">
+              <p className="text-xs font-medium uppercase tracking-wide text-cyan-300">Moving ticket</p>
+              <p className="mt-1 font-medium">{activeCard.title}</p>
+            </div>
+          )}
+        </DragOverlay>
       </DndContext>
     </section>
   );

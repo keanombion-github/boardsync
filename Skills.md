@@ -57,12 +57,12 @@ The #1 goal is **deep learning through building** — not just shipping, but und
 Update this list as things get built. This prevents re-explaining finished work.
 
 - [x] Phase 1: Foundation (backend scaffold, DB connection, first slice, frontend scaffold)
-- [ ] Phase 2a: Core CRUD (boards, columns, cards, ordering)
-- [ ] Phase 2b: Auth (JWT, protected routes, login/register)
-- [ ] Phase 3: Production hygiene (validation, error handling, logging, tests)
-- [ ] Phase 4: CI/CD + Deployment
+- [x] Phase 2a: Core CRUD (boards, columns, cards, ordering)
+- [x] Phase 2b: Auth (JWT, protected routes, login/register)
+- [x] Phase 3: Production hygiene (validation, error handling, logging, tests)
+- [ ] Phase 4: CI/CD configured; public Render/Vercel deployment pending
 - [ ] Phase 5: Real-time (SignalR + Redis)
-- [ ] Phase 6: Polish + Portfolio
+- [ ] Phase 6: Core visual polish complete; live portfolio presentation pending
 
 ---
 

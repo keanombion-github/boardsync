@@ -1,5 +1,7 @@
 using Boardsync.Api.Common.Models;
+using Boardsync.Api.Common.Auth;
 using FluentValidation;
+using System.Security.Claims;
 
 namespace Boardsync.Api.Features.Boards.CreateBoard;
 
@@ -11,10 +13,17 @@ public static class CreateBoardEndpoint
     public static void MapCreateBoardEndpoint(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/boards", async (
-            CreateBoardCommand command, 
+            CreateBoardBody body,
+            ClaimsPrincipal principal,
             IValidator<CreateBoardCommand> validator, 
             CreateBoardHandler handler) =>
         {
+            var command = new CreateBoardCommand
+            {
+                Name = body.Name,
+                OwnerId = principal.GetRequiredUserId()
+            };
+
             // 1. Validate
             var validationResult = await validator.ValidateAsync(command);
             if (!validationResult.IsValid)
@@ -32,6 +41,7 @@ public static class CreateBoardEndpoint
             // 3. Return Standard Response
             return Results.Created($"/api/boards/{boardId}", ApiResponse<object>.Ok(new { Id = boardId }));
         })
+        .RequireAuthorization()
         .WithName("CreateBoard")
         .WithTags("Boards");
     }

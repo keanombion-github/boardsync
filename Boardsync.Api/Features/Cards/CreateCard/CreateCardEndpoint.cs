@@ -1,5 +1,7 @@
 using Boardsync.Api.Common.Models;
+using Boardsync.Api.Common.Auth;
 using FluentValidation;
+using System.Security.Claims;
 
 namespace Boardsync.Api.Features.Cards.CreateCard;
 
@@ -9,6 +11,7 @@ public static class CreateCardEndpoint
     {
         app.MapPost("/api/cards", async (
             CreateCardBody body,
+            ClaimsPrincipal principal,
             IValidator<CreateCardCommand> validator,
             CreateCardHandler handler
         ) =>
@@ -17,7 +20,8 @@ public static class CreateCardEndpoint
             {
                 Title = body.Title,
                 Description = body.Description,
-                ColumnId = body.ColumnId
+                ColumnId = body.ColumnId,
+                UserId = principal.GetRequiredUserId()
             };
 
             var validationResult = await validator.ValidateAsync(command);
@@ -33,10 +37,11 @@ public static class CreateCardEndpoint
                 return Results.NotFound(
                     ApiResponse<object>.Fail("NOT_FOUND", "Column not found."));
 
-            return Results.Created(
-                $"/api/cards/{cardId}",
-                ApiResponse<object>.Ok(new { id = cardId.Value }));
+            return Results.Json(
+                ApiResponse<object>.Ok(new { id = cardId.Value }),
+                statusCode: StatusCodes.Status201Created);
         })
+        .RequireAuthorization()
         .WithName("CreateCard")
         .WithTags("Cards");
     }

@@ -22,12 +22,15 @@ public class CreateColumnHandler
             SELECT id
             FROM boards
             WHERE id = @BoardId
+              AND (owner_id = @UserId
+                   OR EXISTS (SELECT 1 FROM board_members AS member
+                              WHERE member.board_id = boards.id AND member.user_id = @UserId))
             FOR UPDATE;
             """;
 
         var boardId = await connection.QuerySingleOrDefaultAsync<Guid?>(
             boardLockSql,
-            new { command.BoardId },
+            new { command.BoardId, command.UserId },
             transaction);
 
         if (!boardId.HasValue)

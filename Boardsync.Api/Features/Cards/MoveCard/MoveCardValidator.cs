@@ -7,6 +7,7 @@ public class MoveCardValidator : AbstractValidator<MoveCardCommand>
     public MoveCardValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
+        RuleFor(x => x.UserId).NotEmpty();
         RuleFor(x => x.ColumnId).NotEmpty();
 
         RuleFor(x => x)

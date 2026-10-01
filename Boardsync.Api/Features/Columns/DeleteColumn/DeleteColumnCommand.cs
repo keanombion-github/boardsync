@@ -4,4 +4,5 @@ public class DeleteColumnCommand
 {
     public required Guid BoardId { get; set; }
     public required Guid ColumnId { get; set; }
+    public required Guid UserId { get; set; }
 }

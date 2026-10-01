@@ -17,10 +17,12 @@ public class GetBoardsHandler
         using var connection = _dbConnectionFactory.CreateConnection();
 
         const string sql = """
-            SELECT id, name AS Name
-            FROM boards
-            WHERE owner_id = @OwnerId
-            ORDER BY created_at DESC;
+            SELECT b.id, b.name AS Name, (b.owner_id = @OwnerId) AS IsOwner
+            FROM boards AS b
+            WHERE b.owner_id = @OwnerId
+               OR EXISTS (SELECT 1 FROM board_members AS member
+                          WHERE member.board_id = b.id AND member.user_id = @OwnerId)
+            ORDER BY b.created_at DESC;
             """;
 
         var board = await connection.QueryAsync<BoardDto>(sql, new { OwnerId = query.OwnerId });
@@ -31,4 +33,4 @@ public class GetBoardsHandler
 
 }
 
-public record BoardDto(Guid Id, string Name);
+public record BoardDto(Guid Id, string Name, bool IsOwner);

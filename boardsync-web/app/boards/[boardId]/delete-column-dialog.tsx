@@ -34,28 +34,28 @@ export function DeleteColumnDialog({
     <AlertDialog.Root open={open} onOpenChange={setOpen}>
       <AlertDialog.Trigger
         aria-label={`Delete ${column.name} column`}
-        className="rounded-md p-1 text-gray-600 hover:bg-red-100 hover:text-red-700"
+        className="rounded-md p-1 text-slate-400 hover:bg-red-500/15 hover:text-red-300"
       >
         <Trash2 size={16} />
       </AlertDialog.Trigger>
 
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+        <AlertDialog.Backdrop className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" />
 
-        <AlertDialog.Viewport className="fixed inset-0 flex items-center justify-center p-4">
-          <AlertDialog.Popup className="w-full max-w-md rounded-xl bg-white p-6 text-gray-950 shadow-2xl">
+        <AlertDialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <AlertDialog.Popup className="w-full max-w-md rounded-2xl border border-white/15 bg-slate-900 p-6 text-slate-100 shadow-2xl">
             <AlertDialog.Title className="text-lg font-semibold">
               Delete column
             </AlertDialog.Title>
 
-            <AlertDialog.Description className="mt-2 text-sm text-gray-600">
+            <AlertDialog.Description className="mt-2 text-sm text-slate-400">
               Delete &quot;{column.name}&quot; and its {column.cards.length}{" "}
               {column.cards.length === 1 ? "card" : "cards"}? This cannot be
               undone.
             </AlertDialog.Description>
 
             {deleteColumnMutation.isError && (
-              <p role="alert" className="mt-3 text-sm text-red-600">
+              <p role="alert" className="mt-3 text-sm text-red-300">
                 {deleteColumnMutation.error.message}
               </p>
             )}
@@ -63,7 +63,7 @@ export function DeleteColumnDialog({
             <div className="mt-6 flex justify-end gap-2">
               <AlertDialog.Close
                 disabled={deleteColumnMutation.isPending}
-                className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+                className="rounded-lg border border-white/15 px-3 py-2 text-sm disabled:opacity-50"
               >
                 Cancel
               </AlertDialog.Close>
@@ -72,7 +72,7 @@ export function DeleteColumnDialog({
                 type="button"
                 onClick={() => deleteColumnMutation.mutate()}
                 disabled={deleteColumnMutation.isPending}
-                className="rounded-md bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {deleteColumnMutation.isPending ? "Deleting..." : "Delete"}
               </button>

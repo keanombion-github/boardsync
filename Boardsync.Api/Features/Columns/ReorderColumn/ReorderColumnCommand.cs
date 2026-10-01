@@ -16,6 +16,7 @@ public enum ReorderColumnResult
 public class ReorderColumnCommand
 {
     public required Guid BoardId { get; set; }
+    public required Guid UserId { get; set; }
     public required Guid ColumnId { get; set; }
     public Guid? BeforeColumnId { get; set; }
     public Guid? AfterColumnId { get; set; }

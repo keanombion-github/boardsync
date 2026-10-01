@@ -5,6 +5,7 @@ public record CreateCardBody(string Title, string? Description, Guid ColumnId);
 public class CreateCardCommand 
 {
     public required Guid ColumnId { get; set; }
+    public required Guid UserId { get; set; }
     public required string Title { get; set; }
     public string? Description { get; set; }
     

@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: boardsync-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Boardsync.Api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: boardsync-db
+          property: connectionString
+      - key: FrontendOrigin
+        sync: false
+      - key: RefreshCookiePath
+        value: /backend/api/auth
+      - key: Jwt__SigningKey
+        generateValue: true
+      - key: Jwt__Issuer
+        value: Boardsync.Api
+      - key: Jwt__Audience
+        value: Boardsync.Web
+
+databases:
+  - name: boardsync-db
+    plan: free
+    region: singapore
+    databaseName: boardsync
+    user: boardsync
+    ipAllowList: []

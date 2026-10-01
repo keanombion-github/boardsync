@@ -7,8 +7,7 @@ namespace Boardsync.Api.Features.Boards.CreateBoard;
 public class CreateBoardCommand
 {
     public required string Name { get; set; }
-    
-    // Note: Once we add JWT Authentication, we will extract this from the token claims.
-    // For now, we will pass it explicitly to test the endpoint.
     public required Guid OwnerId { get; set; }
 }
+
+public sealed record CreateBoardBody(string Name);

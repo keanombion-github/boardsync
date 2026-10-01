@@ -1,21 +1,12 @@
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5230";
-
-type ApiError = {
-  code: string;
-  message: string;
-  details: string[];
-};
-
-type ApiResponse<T> = {
-  success: boolean;
-  data: T | null;
-  error: ApiError | null;
-};
+import { apiRequest } from "./client";
 
 export type CreateBoardInput = {
   name: string;
-  ownerId: string;
+};
+
+export type UpdateBoardInput = {
+  id: string;
+  name: string;
 };
 
 type CreateBoardResult = {
@@ -33,14 +24,110 @@ type UpdateCardResult = {
 export type Board = {
   id: string;
   name: string;
+  isOwner: boolean;
 };
+
+export type BoardMember = {
+  id: string;
+  displayName: string;
+  email: string;
+  isOwner: boolean;
+};
+
+export function getBoardMembers(boardId: string): Promise<BoardMember[]> {
+  return apiRequest<BoardMember[]>(`/api/boards/${boardId}/members`);
+}
+
+export function addBoardMember(boardId: string, email: string): Promise<{ email: string }> {
+  return apiRequest<{ email: string }>(`/api/boards/${boardId}/members`, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function removeBoardMember(boardId: string, memberId: string): Promise<void> {
+  return apiRequest<void>(`/api/boards/${boardId}/members/${memberId}`, {
+    method: "DELETE",
+  });
+}
+
+export function assignCard(cardId: string, assigneeId: string | null): Promise<{ id: string }> {
+  return apiRequest<{ id: string }>(`/api/cards/${cardId}/assignee`, {
+    method: "PUT",
+    body: JSON.stringify({ assigneeId }),
+  });
+}
 
 export type Card = {
   id: string;
   title: string;
   description: string | null;
   position: number;
+  assigneeId: string | null;
+  assigneeName: string | null;
 };
+
+export type CardActivity = {
+  id: string;
+  title: string;
+  description: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  comments: {
+    id: string;
+    body: string;
+    authorId: string;
+    authorName: string;
+    createdAt: string;
+  }[];
+  reactions: {
+    emoji: string;
+    count: number;
+    reactedByMe: boolean;
+  }[];
+  attachments: {
+    id: string;
+    label: string;
+    url: string;
+    addedBy: string;
+    createdAt: string;
+  }[];
+};
+
+export function getCardActivity(cardId: string): Promise<CardActivity> {
+  return apiRequest<CardActivity>(`/api/cards/${cardId}/activity`);
+}
+
+export function addCardComment(cardId: string, body: string): Promise<{ id: string }> {
+  return apiRequest<{ id: string }>(`/api/cards/${cardId}/comments`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
+export function toggleCardReaction(cardId: string, emoji: string): Promise<{ id: string }> {
+  return apiRequest<{ id: string }>(`/api/cards/${cardId}/reactions`, {
+    method: "PUT",
+    body: JSON.stringify({ emoji }),
+  });
+}
+
+export function addCardAttachment(
+  cardId: string,
+  label: string,
+  url: string,
+): Promise<{ id: string }> {
+  return apiRequest<{ id: string }>(`/api/cards/${cardId}/attachments`, {
+    method: "POST",
+    body: JSON.stringify({ label, url }),
+  });
+}
+
+export function deleteCardAttachment(cardId: string, attachmentId: string): Promise<void> {
+  return apiRequest<void>(`/api/cards/${cardId}/attachments/${attachmentId}`, {
+    method: "DELETE",
+  });
+}
 
 export type BoardColumn = {
   id: string;
@@ -52,6 +139,7 @@ export type BoardColumn = {
 export type BoardDetail = {
   id: string;
   name: string;
+  isOwner: boolean;
   columns: BoardColumn[];
 };
 
@@ -67,119 +155,63 @@ export type CreateCardInput = {
   columnId: string;
 };
 
-export async function getBoards(ownerId: string): Promise<Board[]> {
-  const response = await fetch(
-    `${API_URL}/api/boards?ownerId=${encodeURIComponent(ownerId)}`,
-  );
-
-  const result: ApiResponse<Board[]> = await response.json();
-
-  if (!response.ok || !result.success || !result.data) {
-    throw new Error(
-      result.error?.message ?? "Failed to fetch boards.",
-    );
-  }
-
-  return result.data;
+export function getBoards(): Promise<Board[]> {
+  return apiRequest<Board[]>("/api/boards");
 }
 
 export async function createBoard(
   input: CreateBoardInput,
 ): Promise<CreateBoardResult> {
-  const response = await fetch(`${API_URL}/api/boards`, {
+  return apiRequest<CreateBoardResult>("/api/boards", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       name: input.name,
-      ownerId: input.ownerId,
     }),
   });
-
-  const result: ApiResponse<CreateBoardResult> = await response.json();
-
-  if (!response.ok || !result.success || !result.data) {
-    throw new Error(
-      result.error?.message ?? "Failed to create board.",
-    );
-  }
-
-  return result.data;
 }
 
-export async function getBoardById(boardId: string): Promise<BoardDetail> {
-  const response = await fetch(`${API_URL}/api/boards/${boardId}`);
-  const result: ApiResponse<BoardDetail> = await response.json();
+export function updateBoard(input: UpdateBoardInput): Promise<Board> {
+  return apiRequest<Board>(`/api/boards/${input.id}`, {
+    method: "PUT",
+    body: JSON.stringify({ name: input.name }),
+  });
+}
 
-  if (!response.ok || !result.success || !result.data) {
-    throw new Error(
-      result.error?.message ?? "Failed to fetch board.",
-    );
-  }
+export function deleteBoard(boardId: string): Promise<void> {
+  return apiRequest<void>(`/api/boards/${boardId}`, {
+    method: "DELETE",
+  });
+}
 
-  return result.data;
+export function getBoardById(boardId: string): Promise<BoardDetail> {
+  return apiRequest<BoardDetail>(`/api/boards/${boardId}`);
 }
 
 export async function createCard(
   input: CreateCardInput,
 ): Promise<CreateCardResult> {
-  const response = await fetch(`${API_URL}/api/cards`, {
+  return apiRequest<CreateCardResult>("/api/cards", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(input),
   });
-
-  const result: ApiResponse<CreateCardResult> = await response.json();
-
-  if (!response.ok || !result.success || !result.data) {
-    throw new Error(
-      result.error?.message ?? "Failed to create card.",
-    );
-  }
-
-  return result.data;
 }
 
 export async function updateCard(
   input: UpdateCardInput,
 ): Promise<UpdateCardResult> {
-  const response = await fetch(`${API_URL}/api/cards/${input.id}`, {
+  return apiRequest<UpdateCardResult>(`/api/cards/${input.id}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       title: input.title,
       description: input.description,
     }),
   });
-
-  const result: ApiResponse<UpdateCardResult> = await response.json();
-
-  if (!response.ok || !result.success || !result.data) {
-    throw new Error(
-      result.error?.message ?? "Failed to update card.",
-    );
-  }
-
-  return result.data;
 }
 
 export async function deleteCard(cardId: string): Promise<void> {
-  const response = await fetch(`${API_URL}/api/cards/${cardId}`, {
+  return apiRequest<void>(`/api/cards/${cardId}`, {
     method: "DELETE",
   });
-
-  if (!response.ok) {
-    const result: ApiResponse<never> = await response.json();
-
-    throw new Error(
-      result.error?.message ?? "Failed to delete card.",
-    );
-  }
 }
 
 // Card ordering
@@ -198,27 +230,14 @@ type MoveCardResult = {
 export async function moveCard(
   input: MoveCardInput,
 ): Promise<MoveCardResult> {
-  const response = await fetch(`${API_URL}/api/cards/${input.id}/move`, {
+  return apiRequest<MoveCardResult>(`/api/cards/${input.id}/move`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       columnId: input.columnId,
       beforeCardId: input.beforeCardId,
       afterCardId: input.afterCardId,
     }),
   });
-
-  const result: ApiResponse<MoveCardResult> = await response.json();
-
-  if (!response.ok || !result.success || !result.data) {
-    throw new Error(
-      result.error?.message ?? "Failed to move card.",
-    );
-  }
-
-  return result.data;
 }
 
 // Columns
@@ -235,48 +254,27 @@ type CreateColumnResult = {
 export async function createColumn(
   input: CreateColumnInput,
 ): Promise<CreateColumnResult> {
-  const response = await fetch(
-    `${API_URL}/api/boards/${input.boardId}/columns`,
+  return apiRequest<CreateColumnResult>(
+    `/api/boards/${input.boardId}/columns`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({
         name: input.name,
       }),
     },
   );
-
-  const result: ApiResponse<CreateColumnResult> = await response.json();
-
-  if (!response.ok || !result.success || !result.data) {
-    throw new Error(
-      result.error?.message ?? "Failed to create column.",
-    );
-  }
-
-  return result.data;
 }
 
 export async function deleteColumn(
   boardId: string,
   columnId: string,
 ): Promise<void> {
-  const response = await fetch(
-    `${API_URL}/api/boards/${boardId}/columns/${columnId}`,
+  return apiRequest<void>(
+    `/api/boards/${boardId}/columns/${columnId}`,
     {
       method: "DELETE",
     },
   );
-
-  if (!response.ok) {
-    const result: ApiResponse<never> = await response.json();
-
-    throw new Error(
-      result.error?.message ?? "Failed to delete column.",
-    );
-  }
 }
 
 export type ReorderColumnInput = {
@@ -293,13 +291,10 @@ type ReorderColumnResult = {
 export async function reorderColumn(
   input: ReorderColumnInput,
 ): Promise<ReorderColumnResult> {
-  const response = await fetch(
-    `${API_URL}/api/boards/${input.boardId}/columns/reorder`,
+  return apiRequest<ReorderColumnResult>(
+    `/api/boards/${input.boardId}/columns/reorder`,
     {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({
         columnId: input.columnId,
         beforeColumnId: input.beforeColumnId,
@@ -307,14 +302,4 @@ export async function reorderColumn(
       }),
     },
   );
-
-  const result: ApiResponse<ReorderColumnResult> = await response.json();
-
-  if (!response.ok || !result.success || !result.data) {
-    throw new Error(
-      result.error?.message ?? "Failed to reorder column.",
-    );
-  }
-
-  return result.data;
 }

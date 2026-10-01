@@ -16,5 +16,7 @@ public class CreateCardValidator : AbstractValidator<CreateCardCommand>
             {
                 if (value == Guid.Empty) context.AddFailure("Column ID must be a valid UUID.");
             });
+
+        RuleFor(x => x.UserId).NotEmpty();
     }
 }

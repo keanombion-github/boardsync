@@ -26,6 +26,21 @@ public class ApiResponse<T>
         Data = default,
         Error = new ApiError { Code = code, Message = message }
     };
+
+    public static ApiResponse<T> Fail(
+        string code,
+        string message,
+        IEnumerable<string> details) => new()
+    {
+        Success = false,
+        Data = default,
+        Error = new ApiError
+        {
+            Code = code,
+            Message = message,
+            Details = details.ToList()
+        }
+    };
 }
 
 public class ApiError

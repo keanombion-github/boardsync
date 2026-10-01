@@ -12,5 +12,7 @@ public class UpdateCardValidator : AbstractValidator<UpdateCardCommand>
         
         RuleFor(x => x.Id)
             .NotEmpty().WithMessage("ID is required.");
+
+        RuleFor(x => x.UserId).NotEmpty();
     }
 }

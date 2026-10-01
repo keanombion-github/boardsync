@@ -54,7 +54,7 @@ export function UpdateCardForm({
     return (
             <form
                 onSubmit={handleSubmit}
-                className="mt-4 space-y-3 border-t pt-4"
+                className="mt-4 space-y-4 border-t border-white/10 pt-4"
                 >
                 <div>
                     <label
@@ -71,7 +71,7 @@ export function UpdateCardForm({
                     onChange={(event) => setTitle(event.target.value)}
                     placeholder="Enter a card title"
                     disabled={updateCardMutation.isPending}
-                    className="w-full rounded-md border bg-white px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-white/15 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-cyan-300/60"
                     />
                 </div>
 
@@ -92,12 +92,12 @@ export function UpdateCardForm({
                     placeholder="Optional description"
                     disabled={updateCardMutation.isPending}
                     rows={3}
-                    className="w-full resize-none rounded-md border bg-white px-3 py-2 text-sm"
+                    className="w-full resize-none rounded-lg border border-white/15 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-cyan-300/60"
                     />
                 </div>
 
                 {updateCardMutation.isError && (
-                    <p role="alert" className="text-sm text-red-600">
+                    <p role="alert" className="text-sm text-red-300">
                     {updateCardMutation.error.message}
                     </p>
                 )}
@@ -107,7 +107,7 @@ export function UpdateCardForm({
                     disabled={
                     updateCardMutation.isPending || !title.trim()
                     }
-                    className="w-full rounded-md bg-black px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-lg bg-cyan-300 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {updateCardMutation.isPending
                     ? "Updating..."

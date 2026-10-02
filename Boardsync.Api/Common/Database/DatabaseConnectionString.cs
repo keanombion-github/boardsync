@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.WebUtilities;
 using Npgsql;
 
 namespace Boardsync.Api.Common.Database;
@@ -39,7 +40,7 @@ public static class DatabaseConnectionString
             throw new InvalidOperationException("DATABASE_URL must include a database name.");
         }
 
-        return new NpgsqlConnectionStringBuilder
+        var connectionString = new NpgsqlConnectionStringBuilder
         {
             Host = uri.Host,
             Port = uri.IsDefaultPort ? 5432 : uri.Port,
@@ -47,6 +48,27 @@ public static class DatabaseConnectionString
             Username = Uri.UnescapeDataString(userInfo[0]),
             Password = Uri.UnescapeDataString(userInfo[1]),
             Pooling = true
-        }.ConnectionString;
+        };
+
+        var parameters = QueryHelpers.ParseQuery(uri.Query);
+        if (parameters.TryGetValue("sslmode", out var sslMode))
+        {
+            if (!Enum.TryParse<SslMode>(sslMode.ToString(), true, out var parsedSslMode)
+                || !Enum.IsDefined(parsedSslMode))
+                throw new InvalidOperationException("DATABASE_URL has an invalid sslmode.");
+
+            connectionString.SslMode = parsedSslMode;
+        }
+
+        if (parameters.TryGetValue("channel_binding", out var channelBinding))
+        {
+            if (!Enum.TryParse<ChannelBinding>(channelBinding.ToString(), true, out var parsedChannelBinding)
+                || !Enum.IsDefined(parsedChannelBinding))
+                throw new InvalidOperationException("DATABASE_URL has an invalid channel_binding.");
+
+            connectionString.ChannelBinding = parsedChannelBinding;
+        }
+
+        return connectionString.ConnectionString;
     }
 }

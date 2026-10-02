@@ -26,9 +26,10 @@ export function UpdateCardForm({
     mutationFn: updateCard,
 
     onSuccess: async () => {
-        await queryClient.invalidateQueries({
-        queryKey: ["board", boardId],
-        });
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["board", boardId] }),
+            queryClient.invalidateQueries({ queryKey: ["card-activity", card.id] }),
+        ]);
 
         onUpdated?.();
     },

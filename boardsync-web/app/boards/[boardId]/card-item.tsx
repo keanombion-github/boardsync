@@ -1,10 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import type { Card } from "@/lib/api/boards";
-import { EditCardDialog } from "./edit-card-dialog";
-import { DeleteCardDialog } from "./delete-card-dialog";
 import { CardActivityDialog } from "./card-activity-dialog";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, UserRound } from "lucide-react";
+import { GripVertical, Pencil, UserRound } from "lucide-react";
 
 type CardItemProps = {
   boardId: string;
@@ -13,6 +14,7 @@ type CardItemProps = {
 };
 
 export function CardItem({ boardId, columnId, card }: CardItemProps) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const {
     attributes,
     listeners,
@@ -43,12 +45,15 @@ export function CardItem({ boardId, columnId, card }: CardItemProps) {
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-medium leading-5 text-slate-100">{card.title}</h3>
+        <h3 className="font-medium leading-5 text-slate-100">
+          <button type="button" onClick={() => setDetailsOpen(true)} className="text-left hover:text-cyan-200 hover:underline">
+            {card.title}
+          </button>
+        </h3>
 
-        <div className="flex items-center gap-1">
-          <EditCardDialog boardId={boardId} card={card} />
-          <DeleteCardDialog boardId={boardId} card={card} />
-        </div>
+        <button type="button" aria-label={`Open ticket details for ${card.title}`} onClick={() => setDetailsOpen(true)} className="rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-cyan-200">
+          <Pencil size={16} />
+        </button>
       </div>
 
       {card.description && (
@@ -62,8 +67,7 @@ export function CardItem({ boardId, columnId, card }: CardItemProps) {
         <span className="truncate">{card.assigneeName ?? "Unassigned"}</span>
       </p>
 
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <CardActivityDialog boardId={boardId} card={card} />
+      <div className="mt-3 flex items-center justify-end gap-2">
         <button
           type="button"
           aria-label={`Drag ${card.title}`}
@@ -74,6 +78,7 @@ export function CardItem({ boardId, columnId, card }: CardItemProps) {
           <GripVertical size={18} />
         </button>
       </div>
+      <CardActivityDialog boardId={boardId} card={card} open={detailsOpen} onOpenChange={setDetailsOpen} />
     </article>
   );
 }

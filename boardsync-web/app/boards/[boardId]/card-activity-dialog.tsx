@@ -3,11 +3,13 @@
 import { useState, type FormEvent } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, MessageCircle, Paperclip, Trash2, X } from "lucide-react";
+import { ExternalLink, Paperclip, Trash2, X } from "lucide-react";
+import { UpdateCardForm } from "./update-card-form";
 import {
   addCardAttachment,
   addCardComment,
   assignCard,
+  deleteCard,
   deleteCardAttachment,
   getBoardMembers,
   getCardActivity,
@@ -17,11 +19,15 @@ import {
 
 const reactions = ["👍", "❤️", "🎉", "👀"];
 
-export function CardActivityDialog({ boardId, card }: { boardId: string; card: Card }) {
-  const [open, setOpen] = useState(false);
+export function CardActivityDialog({ boardId, card, open, onOpenChange }: { boardId: string; card: Card; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [comment, setComment] = useState("");
   const [attachmentLabel, setAttachmentLabel] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) setConfirmDelete(false);
+    onOpenChange(nextOpen);
+  }
   const queryClient = useQueryClient();
   const queryKey = ["card-activity", card.id];
   const { data, isPending, isError, error } = useQuery({
@@ -75,6 +81,13 @@ export function CardActivityDialog({ boardId, card }: { boardId: string; card: C
       ]);
     },
   });
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteCard(card.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["board", boardId] });
+      handleOpenChange(false);
+    },
+  });
 
   function submitComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -88,32 +101,26 @@ export function CardActivityDialog({ boardId, card }: { boardId: string; card: C
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger
-        aria-label={`View details and comments for ${card.title}`}
-        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-cyan-200 hover:bg-white/10"
-      >
-        <MessageCircle size={15} /> Details &amp; comments
-      </Dialog.Trigger>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" />
         <Dialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
           <Dialog.Popup className="my-auto max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/15 bg-slate-900 p-6 text-slate-100 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <Dialog.Title className="text-lg font-semibold">{card.title}</Dialog.Title>
-                <Dialog.Description className="mt-1 text-sm text-slate-400">Assign a board member and discuss this ticket.</Dialog.Description>
+                <Dialog.Title className="text-lg font-semibold">Ticket details</Dialog.Title>
+                <Dialog.Description className="mt-1 text-sm text-slate-400">Edit, assign, and discuss this ticket.</Dialog.Description>
               </div>
               <Dialog.Close aria-label="Close ticket details" className="rounded-md p-1 text-slate-400 hover:text-white"><X size={18} /></Dialog.Close>
             </div>
 
             {isPending && <p className="mt-6 text-sm text-slate-400">Loading ticket...</p>}
             {isError && <p role="alert" className="mt-6 text-sm text-red-300">{error.message}</p>}
-            {data && (
+            {open && data && (
               <div className="mt-6 space-y-6">
                 <section>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Description</h3>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-200">{data.description || "No description yet."}</p>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Title and description</h3>
+                  <UpdateCardForm boardId={boardId} card={card} />
                 </section>
                 <section>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Assignee</h3>
@@ -201,6 +208,20 @@ export function CardActivityDialog({ boardId, card }: { boardId: string; card: C
                     })}
                   </div>
                   {reactionMutation.isError && <p role="alert" className="mt-2 text-sm text-red-300">{reactionMutation.error.message}</p>}
+                </section>
+                <section className="border-t border-white/10 pt-5">
+                  {!confirmDelete ? (
+                    <button type="button" onClick={() => setConfirmDelete(true)} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-300 hover:bg-red-400/10"><Trash2 size={16} /> Delete ticket</button>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-red-200">Delete this ticket permanently?</p>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setConfirmDelete(false)} className="rounded-lg border border-white/15 px-3 py-2 text-sm">Cancel</button>
+                        <button type="button" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate()} className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{deleteMutation.isPending ? "Deleting..." : "Confirm delete"}</button>
+                      </div>
+                      {deleteMutation.isError && <p role="alert" className="text-sm text-red-300">{deleteMutation.error.message}</p>}
+                    </div>
+                  )}
                 </section>
               </div>
             )}

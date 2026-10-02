@@ -178,3 +178,16 @@ Frontend release review (2026-10-01): logout now keeps the local session intact
 when its API request fails and shows a retryable error; drag errors use readable
 contrast on the dark board. Frontend ESLint and production build pass after the
 change. A browser network-failure interaction still needs manual confirmation.
+
+Ticket modal UX (2026-10-02): the card title and pencil now open one ticket modal
+containing title/description editing, assignment, comments, attachment links,
+reactions, and a confirmed delete action. The card retains a separate drag grip.
+Frontend production build and six tests pass; browser interaction remains to be
+checked manually.
+
+No-cost deployment preparation (2026-10-02): the runbook now describes Netlify
+for Next.js, Render Free for the API, and Neon Free for PostgreSQL. PostgreSQL
+URI conversion now retains `sslmode` and `channel_binding` options needed by
+hosted connection strings; Release build and all 15 backend tests pass. No
+hosted deployment or live Neon connection has been verified. Public signup is
+still open and resource quotas/list-size bounds have not been implemented.

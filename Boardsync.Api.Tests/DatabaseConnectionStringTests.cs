@@ -31,4 +31,16 @@ public sealed class DatabaseConnectionStringTests
             connectionString,
             DatabaseConnectionString.FromPostgresUri(connectionString));
     }
+
+    [Fact]
+    public void FromPostgresUri_PreservesNeonSecurityOptions()
+    {
+        var result = DatabaseConnectionString.FromPostgresUri(
+            "postgresql://user:password@db.example.com/boardsync?sslmode=require&channel_binding=require");
+
+        var parsed = new NpgsqlConnectionStringBuilder(result);
+
+        Assert.Equal(SslMode.Require, parsed.SslMode);
+        Assert.Equal(ChannelBinding.Require, parsed.ChannelBinding);
+    }
 }

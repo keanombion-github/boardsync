@@ -188,6 +188,22 @@ checked manually.
 No-cost deployment preparation (2026-10-02): the runbook now describes Netlify
 for Next.js, Render Free for the API, and Neon Free for PostgreSQL. PostgreSQL
 URI conversion now retains `sslmode` and `channel_binding` options needed by
-hosted connection strings; Release build and all 15 backend tests pass. No
-hosted deployment or live Neon connection has been verified. Public signup is
-still open and resource quotas/list-size bounds have not been implemented.
+hosted connection strings; Release build and all 15 backend tests pass. Public
+signup is still open and resource quotas/list-size bounds have not been
+implemented.
+
+Hosted API checkpoint (2026-10-02): the user deployed commit `7205ed8` to the
+Render `boardsync-api` Free web service. Their deployment screenshot shows DbUp
+applying migrations through 009 and a successful live status. An independent
+request to `https://boardsync-api.onrender.com/health` returned HTTP 200 with
+`Healthy`. Hosted authentication remains untested.
+
+Netlify first deploy (2026-10-03): the dashboard shows `boardsync-web` published
+from commit `7205ed8`, but independent requests to its root, `/backend/health`,
+and `/backend/api/auth/me` all returned Netlify's HTML 404 page. The next
+deploy's public log shows `next build` generated `/`, `/login`, `/register`, and
+`/boards/[boardId]`, but Netlify uploaded raw `.next` files with zero functions.
+The Next.js adapter was not run. A file-based adapter dependency and
+`netlify.toml` are prepared locally; production behavior still needs a new
+deploy and HTTP verification. Confirm `API_PROXY_TARGET` if the frontend loads
+but `/backend/health` remains unavailable.
